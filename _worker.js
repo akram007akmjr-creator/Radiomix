@@ -1,52 +1,60 @@
-// Cloudflare Pages "advanced mode" worker: serves the pages + small API for the SFU (no storage needed).
-const SFU = "https://rtc.live.cloudflare.com/v1/apps/";
+// Cloudflare Pages (advanced mode) + LiveKit Cloud.
+// Variables (Pages > Settings > Variables and secrets):
+//   LIVEKIT_URL (wss://xxxx.livekit.cloud), LIVEKIT_API_KEY, LIVEKIT_API_SECRET, HOST_KEY
 const json = (o, s = 200) => Response.json(o, { status: s });
+const te = new TextEncoder();
+const b64u = (buf) =>
+  btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-async function sfu(env, path, method, body) {
-  const r = await fetch(SFU + env.SFU_APP_ID + path, {
-    method,
-    headers: { Authorization: "Bearer " + env.SFU_APP_SECRET, "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const t = await r.text();
-  let j; try { j = JSON.parse(t); } catch { j = { raw: t }; }
-  if (!r.ok) throw new Error("SFU " + r.status + ": " + t.slice(0, 300));
-  if (j.errorCode) throw new Error("SFU: " + (j.errorDescription || j.errorCode));
-  return j;
+async function makeToken(env, identity, video, ttl = 3600) {
+  const now = Math.floor(Date.now() / 1000);
+  const h = b64u(te.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
+  const p = b64u(te.encode(JSON.stringify({ iss: env.LIVEKIT_API_KEY, sub: identity, nbf: now, exp: now + ttl, video })));
+  const key = await crypto.subtle.importKey("raw", te.encode(env.LIVEKIT_API_SECRET),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, te.encode(h + "." + p));
+  return h + "." + p + "." + b64u(sig);
 }
+
+const httpUrl = (u) => u.replace(/^wss:/, "https:").replace(/^ws:/, "http:").replace(/\/+$/, "");
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     if (req.method !== "POST") return json({ error: "POST only" }, 405);
-    if (!env.SFU_APP_ID || !env.SFU_APP_SECRET) return json({ error: "SFU_APP_ID / SFU_APP_SECRET machi mdkhlin f Settings" }, 500);
+    const missing = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "HOST_KEY"].filter((k) => !env[k]);
+    if (missing.length) return json({ error: "Variables nqsin f Cloudflare: " + missing.join(", ") }, 500);
     const body = await req.json().catch(() => ({}));
+    const hostOk = (req.headers.get("x-host-key") || body.key) === env.HOST_KEY;
+
     try {
-      if (url.pathname === "/api/host/start" || url.pathname === "/api/host/stop") {
-        const key = req.headers.get("x-host-key") || body.key;
-        if (!env.HOST_KEY || key !== env.HOST_KEY) return json({ error: "Mot de passe ghalat (wla HOST_KEY machi mdkhel)" }, 401);
-        if (url.pathname.endsWith("stop")) return json({ ok: true });
-        const { sessionId } = await sfu(env, "/sessions/new", "POST");
-        const r = await sfu(env, `/sessions/${sessionId}/tracks/new`, "POST", {
-          sessionDescription: { type: "offer", sdp: body.sdp },
-          tracks: [{ location: "local", mid: String(body.mid), trackName: "mix" }],
+      // Verifies the key/secret directly against LiveKit Cloud (server API call).
+      if (url.pathname === "/api/check") {
+        if (!hostOk) return json({ error: "Mot de passe DJ ghalat" }, 401);
+        const t = await makeToken(env, "check", { roomList: true }, 60);
+        const r = await fetch(httpUrl(env.LIVEKIT_URL) + "/twirp/livekit.RoomService/ListRooms", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
+          body: "{}",
         });
-        return json({ sessionId, sessionDescription: r.sessionDescription });
+        if (r.status === 401 || r.status === 403)
+          return json({ error: "LiveKit rfed l'API key/secret (" + r.status + "). T2akked mn LIVEKIT_API_KEY o LIVEKIT_API_SECRET." }, 401);
+        if (!r.ok) return json({ error: "LiveKit a rje3 " + r.status + ". T2akked mn LIVEKIT_URL." }, 502);
+        return json({ ok: true, host: new URL(httpUrl(env.LIVEKIT_URL)).host });
       }
-      if (url.pathname === "/api/listen") {
-        if (!/^[a-f0-9]{16,64}$/i.test(body.s || "")) return json({ error: "Lien machi s7i7" }, 400);
-        const { sessionId } = await sfu(env, "/sessions/new", "POST");
-        const r = await sfu(env, `/sessions/${sessionId}/tracks/new`, "POST", {
-          tracks: [{ location: "remote", sessionId: body.s, trackName: "mix" }],
-        });
-        return json({ sessionId, sessionDescription: r.sessionDescription });
-      }
-      if (url.pathname === "/api/renegotiate") {
-        await sfu(env, `/sessions/${body.sessionId}/renegotiate`, "PUT", {
-          sessionDescription: { type: "answer", sdp: body.sdp },
-        });
-        return json({ ok: true });
+
+      if (url.pathname === "/api/token") {
+        const room = String(body.room || "radio");
+        if (!/^[\w-]{1,40}$/.test(room)) return json({ error: "Smiyt radio machi s7i7a" }, 400);
+        if (body.role === "host") {
+          if (!hostOk) return json({ error: "Mot de passe DJ ghalat" }, 401);
+          const token = await makeToken(env, "dj", { roomJoin: true, room, canPublish: true, canSubscribe: false, canPublishData: false });
+          return json({ token, url: env.LIVEKIT_URL });
+        }
+        const id = "ls-" + crypto.randomUUID().slice(0, 8);
+        const token = await makeToken(env, id, { roomJoin: true, room, canPublish: false, canSubscribe: true, canPublishData: false });
+        return json({ token, url: env.LIVEKIT_URL });
       }
       return json({ error: "not found" }, 404);
     } catch (e) {
