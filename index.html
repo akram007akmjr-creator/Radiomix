@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>📻 Radio</title>
+<style>
+:root{--bg:#0e0b1a;--tx:#f3f0ff;--mu:#9d95c4;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle at 20% 0,#2a1750,#0e0b1a 60%) fixed;color:var(--tx);font:16px system-ui,sans-serif;text-align:center;padding:24px}
+h1{margin:0;font-size:30px;background:linear-gradient(90deg,#ff4d8d,#7c5cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#ring{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ff4d8d,#7c5cff);font-size:56px;box-shadow:0 0 0 0 rgba(255,77,141,.5)}
+.on #ring{animation:p 1.6s infinite}@keyframes p{70%{box-shadow:0 0 0 30px rgba(255,77,141,0)}100%{box-shadow:0 0 0 0 rgba(255,77,141,0)}}
+button{background:#fff;color:#1b1030;border:0;border-radius:40px;padding:16px 38px;font-size:18px;font-weight:700}
+#t{color:var(--mu);min-height:22px;max-width:320px}
+</style></head><body>
+<h1>Radio</h1>
+<div id="ring">🎧</div>
+<div id="t">Dghet bach tsma3 l'DJ live</div>
+<button id="b">▶ Écouter</button>
+<audio id="a" autoplay playsinline></audio>
+<script>
+const $=id=>document.getElementById(id);let pc=null;
+const S=new URLSearchParams(location.search).get('s');
+if(!S){$('t').textContent='Talab mn l\'DJ l\'lien kamel (fih ?s=...)';$('b').disabled=true;$('b').style.opacity=.4}
+async function listen(){
+  $('t').textContent='Kan connecti…';
+  try{
+    pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'}],bundlePolicy:'max-bundle'});
+    pc.ontrack=e=>{$('a').srcObject=e.streams[0]||new MediaStream([e.track]);$('a').play().catch(()=>{})};
+    pc.onconnectionstatechange=()=>{const c=pc&&pc.connectionState;if(c==='connected'){$('t').textContent='Kat sma3 l\'DJ live 🔴';document.body.classList.add('on')}if(c==='failed'||c==='disconnected'){stop('Connexion t9te3at. 3awed dghet Écouter.')}};
+    const r=await fetch('/api/listen',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({s:S})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error);
+    await pc.setRemoteDescription(j.sessionDescription);
+    await pc.setLocalDescription(await pc.createAnswer());
+    const r2=await fetch('/api/renegotiate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sessionId:j.sessionId,sdp:pc.localDescription.sdp})});
+    if(!r2.ok)throw new Error((await r2.json()).error);
+    $('b').textContent='⏹ Stop';
+  }catch(e){stop(e.message.includes('SFU')?'L\'DJ machi live daba (wla l\'lien qdim).':e.message)}
+}
+function stop(m){if(pc){pc.close();pc=null}$('a').srcObject=null;document.body.classList.remove('on');$('b').textContent='▶ Écouter';$('t').textContent=m||'Wa9ef'}
+$('b').onclick=()=>pc?stop():listen();
+</script></body></html>

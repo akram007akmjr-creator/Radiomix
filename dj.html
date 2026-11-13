@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Radio DJ - Studio</title>
+<style>
+:root{--bg:#f4f1ec;--card:#fff;--tx:#1b1b1f;--mu:#6b6b75;--ac:#e0457b;--bd:#ddd8d0;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121216;--card:#1c1c23;--tx:#f1f1f4;--mu:#9a9aa6;--bd:#2c2c36;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;padding:14px;max-width:640px;margin:auto}
+h1{font-size:20px;margin:4px 0 12px}h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:0 0 10px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+button,label.b{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer}
+button.on,.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1}
+.s{display:flex;align-items:center;gap:10px;margin:8px 0}.s span{width:92px;color:var(--mu);font-size:13px}.s input{flex:1}
+#list{max-height:220px;overflow:auto}
+.t{padding:9px 6px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.t.cur{color:var(--ac);font-weight:600}
+#bar{height:6px;background:var(--bd);border-radius:3px;margin-top:10px}#bar i{display:block;height:100%;width:0;background:var(--ac);border-radius:3px}
+small{color:var(--mu)}
+
+:root,:root:not([data-theme="light"]){--bg:#0e0b1a;--card:#191430;--tx:#f3f0ff;--mu:#9d95c4;--ac:#ff4d8d;--bd:#2e2750;color-scheme:dark}
+body{background:radial-gradient(circle at 20% 0,#2a1750,#0e0b1a 60%) fixed}
+h1{background:linear-gradient(90deg,#ff4d8d,#7c5cff);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:28px}
+.c{box-shadow:0 8px 30px rgba(0,0,0,.35)}
+button.on,.on{background:linear-gradient(90deg,#ff4d8d,#7c5cff);border:0;color:#fff}
+#live.on{animation:pl 1.4s infinite}@keyframes pl{50%{opacity:.65}}
+input[type=range]{accent-color:#ff4d8d}
+</style></head><body>
+<h1>📻 Radio DJ</h1>
+
+<div class="c"><h2>Playlist</h2>
+<div class="row"><label class="b">➕ Zid musique<input id="f" type="file" multiple hidden></label>
+<button id="auto" class="on">Auto-mix: ON</button><button id="shuf">Shuffle: OFF</button></div>
+<div id="list"><small>Zid chi ghnaya bach tbda…</small></div></div>
+
+<div class="c"><h2 id="now">Rien en lecture</h2>
+<div class="row"><button id="prev">⏮</button><button id="pp">▶ Play</button><button id="next">⏭ Mix</button></div>
+<canvas id="vz" width="600" height="90" style="width:100%;height:70px;margin-top:10px"></canvas>
+<div id="bar"><i></i></div></div>
+
+<div class="c"><h2>Live</h2>
+<div class="row"><input id="key" type="password" placeholder="Mot de passe DJ" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)">
+<button id="live">🔴 Go Live</button></div>
+<small id="ls">Dghet Go Live bach t3ti l'lien l sa7abek.</small>
+<div id="lnk" style="margin-top:8px;word-break:break-all"></div></div>
+
+<div class="c"><h2>Voix / Instru</h2>
+<div class="row" id="modes"><button data-m="n" class="on">Normal</button><button data-m="k">Sans voix</button><button data-m="v">Voix seule</button></div>
+<small>Sans voix kaybqi l'bass o l'kick. Voix seule approximatif (machi IA).</small></div>
+
+<div class="c"><h2>Effets</h2>
+<div class="s"><span>Vitesse</span><input id="rate" type="range" min=".5" max="1.5" step=".01" value="1"><b id="rv">1.00x</b></div>
+<div class="s"><span>Tonalité</span><button id="kp" class="on" style="flex:1">Garde la tonalité: ON</button></div>
+<div class="s"><span>Filtre</span><input id="flt" type="range" min="0" max="100" value="100"></div>
+<div class="s"><span>Echo</span><input id="dly" type="range" min="0" max="100" value="0"></div>
+<div class="s"><span>Reverb</span><input id="rev" type="range" min="0" max="100" value="0"></div>
+<div class="s"><span>Crossfade</span><input id="xf" type="range" min="1" max="15" value="6"><b id="xfv">6s</b></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let ctx,decks=[],tracks=[],cur=0,idx=-1,auto=true,shuf=false,mode='n',rate=1,xf=6,master,filt,dW,rW,streamDest,an;
+function init(){
+  if(ctx)return;
+  ctx=new (window.AudioContext||window.webkitAudioContext)();
+  master=ctx.createGain();filt=ctx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=20000;
+  master.connect(filt);an=ctx.createAnalyser();an.fftSize=128;filt.connect(an);
+  const dry=ctx.createGain();filt.connect(dry);dry.connect(ctx.destination);streamDest=ctx.createMediaStreamDestination();dry.connect(streamDest);
+  const dl=ctx.createDelay(1.5);dl.delayTime.value=.35;const fb=ctx.createGain();fb.gain.value=.45;
+  dW=ctx.createGain();dW.gain.value=0;filt.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(dW);dW.connect(ctx.destination);dW.connect(streamDest);
+  const cv=ctx.createConvolver(),len=ctx.sampleRate*2.5,b=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}
+  cv.buffer=b;rW=ctx.createGain();rW.gain.value=0;filt.connect(cv);cv.connect(rW);rW.connect(ctx.destination);rW.connect(streamDest);
+  for(let k=0;k<2;k++)decks.push(mk());
+}
+function mk(){
+  const el=new Audio();applyPitch(el);el.defaultPlaybackRate=rate;el.addEventListener('loadedmetadata',()=>{el.playbackRate=rate;applyPitch(el)});
+  const src=ctx.createMediaElementSource(el),g=ctx.createGain();
+  const nG=ctx.createGain(),kG=ctx.createGain(),vG=ctx.createGain(),kB=ctx.createGain();kG.gain.value=0;vG.gain.value=0;kB.gain.value=0;
+  src.connect(nG);
+  const sp=ctx.createChannelSplitter(2);src.connect(sp);
+  const l=ctx.createGain(),r=ctx.createGain();r.gain.value=-1;sp.connect(l,0);sp.connect(r,1);const hs=ctx.createBiquadFilter();hs.type='highpass';hs.frequency.value=150;l.connect(hs);r.connect(hs);hs.connect(kG);const lb=ctx.createBiquadFilter();lb.type='lowpass';lb.frequency.value=150;src.connect(lb);lb.connect(kB);
+  const ml=ctx.createGain(),mr=ctx.createGain(),hp=ctx.createBiquadFilter(),lp=ctx.createBiquadFilter();
+  hp.type='highpass';hp.frequency.value=200;lp.type='lowpass';lp.frequency.value=4500;
+  sp.connect(ml,0);sp.connect(mr,1);ml.connect(hp);mr.connect(hp);hp.connect(lp);lp.connect(vG);
+  nG.connect(g);kG.connect(g);kB.connect(g);vG.connect(g);g.connect(master);
+  return{el,gain:g,nG,kG,kB,vG};
+}
+function setMode(m){mode=m;decks.forEach(d=>{const t=ctx.currentTime,s=(g,v)=>g.gain.setTargetAtTime(v,t,.03);s(d.nG,m=='n'?1:0);s(d.kG,m=='k'?1.8:0);s(d.kB,m=='k'?1:0);s(d.vG,m=='v'?1.8:0)});
+  document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('on',b.dataset.m==m))}
+function nextIdx(){if(tracks.length<2)return 0;if(shuf){let n;do n=Math.floor(Math.random()*tracks.length);while(n==idx);return n}return (idx+1)%tracks.length}
+function play(i,fade){
+  if(!tracks[i])return;init();ctx.resume();setMode(mode);
+  const old=decks[cur],nd=decks[1-cur],t=ctx.currentTime;
+  nd.el.src=tracks[i].url;nd.el.defaultPlaybackRate=rate;nd.el.playbackRate=rate;applyPitch(nd.el);nd.el.play().then(()=>{nd.el.playbackRate=rate}).catch(()=>{});
+  nd.gain.gain.cancelScheduledValues(t);nd.gain.gain.setValueAtTime(fade?.0001:1,t);
+  if(fade)nd.gain.gain.linearRampToValueAtTime(1,t+fade);
+  if(!old.el.paused){const f=fade||.05;old.gain.gain.cancelScheduledValues(t);old.gain.gain.setValueAtTime(old.gain.gain.value,t);old.gain.gain.linearRampToValueAtTime(0,t+f);setTimeout(()=>{if(decks[cur]!==old)old.el.pause()},f*1000+150)}
+  cur=1-cur;idx=i;render();$('pp').textContent='⏸ Pause';
+}
+function render(){
+  $('list').innerHTML=tracks.length?'':'<small>Zid chi ghnaya bach tbda…</small>';
+  tracks.forEach((t,i)=>{const d=document.createElement('div');d.className='t'+(i==idx?' cur':'');d.textContent=(i+1)+'. '+t.name;d.onclick=()=>play(i,0);$('list').appendChild(d)});
+  $('now').textContent=tracks[idx]?tracks[idx].name:'Rien en lecture';
+}
+$('f').onchange=e=>{[...e.target.files].forEach(f=>tracks.push({name:f.name.replace(/\.[^.]+$/,''),url:URL.createObjectURL(f)}));render();if(idx<0)play(0,0)};
+$('pp').onclick=()=>{if(!decks.length)return;const e=decks[cur].el;if(e.paused){ctx.resume();e.play();$('pp').textContent='⏸ Pause'}else{e.pause();$('pp').textContent='▶ Play'}};
+$('next').onclick=()=>play(nextIdx(),xf);
+$('prev').onclick=()=>play((idx-1+tracks.length)%tracks.length,0);
+$('auto').onclick=e=>{auto=!auto;e.target.classList.toggle('on',auto);e.target.textContent='Auto-mix: '+(auto?'ON':'OFF')};
+$('shuf').onclick=e=>{shuf=!shuf;e.target.classList.toggle('on',shuf);e.target.textContent='Shuffle: '+(shuf?'ON':'OFF')};
+document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{init();setMode(b.dataset.m)});
+$('rate').oninput=e=>{rate=+e.target.value;$('rv').textContent=rate.toFixed(2)+'x';decks.forEach(d=>{d.el.defaultPlaybackRate=rate;d.el.playbackRate=rate})};
+let keep=true;function applyPitch(el){el.preservesPitch=keep;el.webkitPreservesPitch=keep;el.mozPreservesPitch=keep}
+$('kp').onclick=e=>{keep=!keep;e.target.classList.toggle('on',keep);e.target.textContent='Garde la tonalité: '+(keep?'ON':'OFF');init();decks.forEach(d=>applyPitch(d.el))};
+$('flt').oninput=e=>{init();filt.frequency.value=200*Math.pow(100,e.target.value/100)};
+$('dly').oninput=e=>{init();dW.gain.value=e.target.value/100*.8};
+$('rev').oninput=e=>{init();rW.gain.value=e.target.value/100*1.2};
+$('xf').oninput=e=>{xf=+e.target.value;$('xfv').textContent=xf+'s'};
+setInterval(()=>{
+  if(!decks.length||idx<0)return;const e=decks[cur].el;
+  if(e.duration)$('bar').firstChild.style.width=(e.currentTime/e.duration*100)+'%';
+  if(auto&&!e.paused&&e.duration&&e.duration-e.currentTime<=xf+.3&&tracks.length>1)play(nextIdx(),xf);
+},250);
+
+
+$('key').value=sessionStorage.getItem('hk')||'';
+let hostPc=null;
+const say=t=>$('ls').textContent=t;
+async function goLive(){
+  init();await ctx.resume();
+  const key=$('key').value.trim();if(!key)return say('Dkhel l\'mot de passe');
+  sessionStorage.setItem('hk',key);say('Kan7ell l\'live…');
+  try{
+    hostPc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'}],bundlePolicy:'max-bundle'});
+    const tr=hostPc.addTransceiver(streamDest.stream.getAudioTracks()[0],{direction:'sendonly'});
+    await hostPc.setLocalDescription(await hostPc.createOffer());
+    const r=await fetch('/api/host/start',{method:'POST',headers:{'content-type':'application/json','x-host-key':key},body:JSON.stringify({sdp:hostPc.localDescription.sdp,mid:tr.mid})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);
+    await hostPc.setRemoteDescription(j.sessionDescription);
+    const link=location.origin+'/?s='+j.sessionId;$('lnk').innerHTML='<b></b><div style="margin-top:8px"><button id="cp" style="width:100%">📋 Copier / Partager l\'lien</button></div>';$('lnk').firstChild.textContent=link;$('cp').onclick=()=>{if(navigator.share)navigator.share({url:link,title:'Radio'}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(link);$('cp').textContent='✓ Lien jahez'};
+    try{const p=tr.sender.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=128000;await tr.sender.setParameters(p)}catch(e){}
+    hostPc.onconnectionstatechange=()=>{const c=hostPc&&hostPc.connectionState;if(c==='connected'){say('🔴 LIVE — sift l\'lien l sa7abek');$('live').textContent='⏹ Stop';$('live').classList.add('on')}else if(c==='failed'||c==='disconnected')say('Connexion t9te3at ('+c+')')};
+  }catch(e){say('Error: '+e.message);if(hostPc){hostPc.close();hostPc=null}}
+}
+async function stopLive(){
+  if(hostPc){hostPc.close();hostPc=null}
+  fetch('/api/host/stop',{method:'POST',headers:{'content-type':'application/json','x-host-key':$('key').value.trim()}});
+  $('live').textContent='🔴 Go Live';$('live').classList.remove('on');say('Live wa9ef');$('lnk').textContent='';
+}
+$('live').onclick=()=>hostPc?stopLive():goLive();
+addEventListener('pagehide',()=>{if(hostPc)fetch('/api/host/stop',{method:'POST',keepalive:true,headers:{'content-type':'application/json'},body:JSON.stringify({key:$('key').value.trim()})})});
+
+(function draw(){requestAnimationFrame(draw);const c=$('vz'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);if(!an)return;const d=new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(d);const w=c.width/d.length,g=x.createLinearGradient(0,0,c.width,0);g.addColorStop(0,'#ff4d8d');g.addColorStop(1,'#7c5cff');x.fillStyle=g;d.forEach((v,i)=>{const h=v/255*c.height;x.fillRect(i*w+1,c.height-h,w-2,h)})})();
+</script></body></html>
