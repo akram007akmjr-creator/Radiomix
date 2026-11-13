@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ token, url: env.LIVEKIT_URL });
     }
     const id = "ls-" + crypto.randomUUID().slice(0, 8);
-    const token = makeToken(env, id, { roomJoin: true, room, canPublish: false, canSubscribe: true, canPublishData: false });
+    const token = makeToken(env, id, { roomJoin: true, room, canPublish: true, canSubscribe: true, canPublishData: true });
     return res.status(200).json({ token, url: env.LIVEKIT_URL });
   } catch (e) {
     return res.status(502).json({ error: String((e && e.message) || e) });
