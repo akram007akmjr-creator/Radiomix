@@ -18,7 +18,12 @@ async function makeToken(env, identity, video, ttl = 3600) {
 
 // Password check: exact match (no regex, no format limits). Both sides are trimmed and Unicode-normalized
 // so a trailing space/newline saved in Cloudflare or iOS accents (NFC/NFD) cannot cause a false mismatch.
-const norm = (s) => String(s ?? "").normalize("NFC").trim();
+// Also drops invisible characters (zero-width / BOM from copy-paste) and one pair of wrapping quotes.
+const norm = (s) => {
+  let v = String(s ?? "").normalize("NFC").replace(/[\u200B-\u200F\u2060\uFEFF]/g, "").trim();
+  if (v.length > 1 && /^(["'\u201C\u2018]).*(["'\u201D\u2019])$/.test(v)) v = v.slice(1, -1).trim();
+  return v;
+};
 async function samePassword(a, b) {
   const [x, y] = await Promise.all([a, b].map(async (v) => new Uint8Array(await crypto.subtle.digest("SHA-256", te.encode(norm(v))))));
   let d = 0;

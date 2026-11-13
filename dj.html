@@ -42,7 +42,7 @@ input[type=range]{accent-color:#ff4d8d}
 
 <div class="c"><h2>Live (LiveKit)</h2>
 <div class="row"><input id="rm" value="radio" placeholder="Smiyt radio" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)">
-<input id="key" type="password" placeholder="Mot de passe DJ" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)"></div>
+<input id="key" type="password" placeholder="Mot de passe DJ" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)"><button id="eye" style="flex:0 0 52px">👁</button></div>
 <div class="row" style="margin-top:8px"><button id="chk">🔎 Vérifier LiveKit</button><button id="live">🔴 Go Live</button></div>
 <small id="ls" style="display:block;margin-top:8px">Vérifier kay't2akked mn l'clés direct m3a LiveKit Cloud.</small>
 <div id="lnk" style="margin-top:8px;word-break:break-all"></div></div>
@@ -135,7 +135,7 @@ async function api(path,body,key){const r=await fetch(path,{method:'POST',header
 async function check(){
   const key=$('key').value.trim();if(!key){say('Dkhel l\'mot de passe');return false}
   sessionStorage.setItem('hk',key);say('Kan t2akked mn LiveKit Cloud…');
-  try{const j=await api('/api/check',{},key);say('✅ LiveKit OK ('+j.host+')');return true}catch(e){say('❌ '+e.message);return false}
+  try{const j=await api('/api/check',{},key);say('✅ LiveKit OK ('+j.host+')');return true}catch(e){say('❌ '+e.message+(/Mot de passe/.test(e.message)?' (kteb-ti '+[...key].length+' caractères)':''));return false}
 }
 function ui(on){
   const b=$('live');b.textContent=on?'⏹ Stop':'🔴 Go Live';b.classList.toggle('on',on);
@@ -159,6 +159,7 @@ async function goLive(){
   }catch(e){say('Error: '+e.message);if(room){const r=room;room=null;r.disconnect()}}
 }
 $('chk').onclick=check;
+$('eye').onclick=()=>{const k=$('key');k.type=k.type==='password'?'text':'password'};
 $('live').onclick=()=>room?room.disconnect():goLive();
 addEventListener('pagehide',()=>{if(room)room.disconnect()});
 
