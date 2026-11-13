@@ -70,7 +70,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <div class="row">
     <label class="b" style="flex:1;text-align:center">Load MP3<input id="f" type="file" multiple hidden></label>
     <button id="pp" class="on" style="flex:1">▶ Play</button>
-    <button id="next" style="flex:1" onclick="triggerMixNow()">⏭ Mix Now</button>
+    <button id="next" style="flex:1" onclick="triggerMixNow()">⏭ Pro Mix Now</button>
     <button id="amx" onclick="tAmx()" class="on" style="flex:1">Auto: ON</button>
   </div>
   <canvas id="vz" width="600" height="60" style="width:100%;height:50px;margin-top:15px;background:#000;border-radius:6px"></canvas>
@@ -104,7 +104,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 let ytP,ctx,decks=[],tracks=[],cur=0,idx=-1,isPlaying=false,rate=1,automix=true;
 let master,filterNode,echoDelay,echoFeedback,echoWet,flangerDelay,flangerWet,streamDest,analyser;
-let room=null,gateTimer=null,echoOn=false,flangerOn=false,fadeDur=5;
+let room=null,gateTimer=null,echoOn=false,flangerOn=false,fadeDur=8; // طولنا وقت الميكس باش يبان بروفيسيونيل
 const callsMap=new Map(),songsMap=new Map();
 
 function onYouTubeIframeAPIReady(){ytP=new YT.Player('yt-player',{videoId:'jfKfPfyJRdk'});}
@@ -173,15 +173,15 @@ const tAmx=()=>{automix=!automix;$('amx').textContent=`Auto: ${automix?'ON':'OFF
 
 $('f').onchange=e=>{
   [...e.target.files].forEach(f=>tracks.push({n:f.name.replace(/\.[^.]+$/,''),u:URL.createObjectURL(f)}));
-  rP();if(idx<0&&tracks.length>0)playTrackIndex(0,0.5);
+  rP();if(idx<0&&tracks.length>0)playTrackIndex(0,1);
 };
 function rP(){
   const list=$('list');
   if(!tracks.length){list.innerHTML='<small style="color:var(--mu)">Aucune piste chargée...</small>';return;}
-  list.innerHTML=tracks.map((t,i)=>`<div class="t ${i===idx?'cur':''}" onclick="playTrackIndex(${i},1)"><span>${i+1}. ${t.n}</span><span>${i===idx?'🔊 Playing':''}</span></div>`).join('');
+  list.innerHTML=tracks.map((t,i)=>`<div class="t ${i===idx?'cur':''}" onclick="playTrackIndex(${i},2)"><span>${i+1}. ${t.n}</span><span>${i===idx?'🔊 Playing':''}</span></div>`).join('');
 }
 
-// Pro Mixing Logic (Dual Decks Crossfade & Clean Stop)
+// Ultra Pro DJ Mixing Engine with Pro Filter Sweep & Smooth 8s Crossfade
 function playTrackIndex(i, fade = fadeDur) {
   if (!tracks[i]) return;
   if(ytP && typeof ytP.pauseVideo === 'function'){ try{ ytP.pauseVideo(); }catch(e){} }
@@ -191,19 +191,24 @@ function playTrackIndex(i, fade = fadeDur) {
   const currentDeck = decks[cur];
   const nextDeck = decks[nextDeckIdx];
   const now = ctx.currentTime;
-  const sf = Math.max(0.5, fade);
+  const sf = Math.max(2, fade); // Fade طويل باش يبان ميكس محترف
 
-  // Load and start incoming track
+  // Pro Filter Sweep Effect during transition
+  filterNode.frequency.cancelScheduledValues(now);
+  filterNode.frequency.setValueAtTime(3500, now);
+  filterNode.frequency.exponentialRampToValueAtTime(20000, now + sf);
+
+  // Load and play incoming track smoothly
   nextDeck.el.src = tracks[i].u;
   nextDeck.el.playbackRate = rate;
   nextDeck.el.play().catch(()=>{});
 
-  // Fade in new deck
+  // Fade In new deck
   nextDeck.gain.gain.cancelScheduledValues(now);
   nextDeck.gain.gain.setValueAtTime(0.001, now);
   nextDeck.gain.gain.exponentialRampToValueAtTime(1, now + sf);
 
-  // Fade out old deck and stop it completely
+  // Fade Out old deck cleanly and stop it
   if (isPlaying && currentDeck.el.src) {
     currentDeck.gain.gain.cancelScheduledValues(now);
     currentDeck.gain.gain.setValueAtTime(currentDeck.gain.gain.value || 1, now);
@@ -226,13 +231,14 @@ function playTrackIndex(i, fade = fadeDur) {
 function triggerMixNow() {
   if (tracks.length < 2) return;
   const nextIdx = (idx + 1) % tracks.length;
-  playTrackIndex(nextIdx, 3); // Smooth 3s manual mix
+  playTrackIndex(nextIdx, 6); // Manual Pro Mix with 6s transition
 }
 
 setInterval(()=>{
   if(!isPlaying||idx<0)return;const d=decks[cur].el;
   if(d.duration&&d.currentTime){
     $('bF').style.width=Math.min(100,(d.currentTime/d.duration)*100)+'%';
+    // يبدأ الميكس التلقائي قبل ما تسالي الأغنية بـ 8 ثواني باش ياخد وقته فالتداخل
     if(automix&&(d.duration-d.currentTime)<=fadeDur&&tracks.length>1){
       const nextIdx = (idx + 1) % tracks.length;
       playTrackIndex(nextIdx, fadeDur);
