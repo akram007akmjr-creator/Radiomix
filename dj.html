@@ -2,173 +2,183 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>📻 Radio DJ - Complete Pro Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>📻 Pro DJ Studio</title>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/dist/livekit-client.umd.min.js"></script>
 <style>
-:root{--bg:#0f0f11;--pn:#1a1c20;--ac:#00ffcc;--ac2:#ff0055;--bd:#2a2d34;--tx:#e0e0e0;--mu:#888}
-*{box-sizing:border-box;user-select:none;-webkit-user-select:none}
-body{margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif;padding:10px;max-width:700px;margin:auto}
-h1{font-size:20px;text-align:center;text-transform:uppercase;letter-spacing:2px;color:#fff;margin:10px 0 20px;text-shadow:0 0 10px rgba(255,255,255,.2)}
-h2{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mu);margin:0 0 12px;border-bottom:1px solid var(--bd);padding-bottom:5px}
-.pn{background:var(--pn);border:1px solid var(--bd);border-radius:12px;padding:15px;margin-bottom:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 4px 15px rgba(0,0,0,.5)}
-button,label.b{background:#23262b;color:#ccc;border:1px solid #333;border-radius:6px;padding:12px;font-size:12px;font-weight:700;text-transform:uppercase;cursor:pointer;transition:.1s;box-shadow:0 2px 4px rgba(0,0,0,.3)}
-button:active{transform:translateY(2px);box-shadow:none;background:#1a1c20}
-button.on{background:var(--ac2);color:#fff;border-color:#ff3377;box-shadow:0 0 10px rgba(255,0,85,.4)}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-input[type=text],input[type=password]{flex:1;background:#0a0a0c;border:1px solid var(--bd);color:#fff;padding:12px;border-radius:6px;outline:none;user-select:text;-webkit-user-select:text}
-input[type=text]:focus{border-color:var(--ac)}
-input[type=range]{-webkit-appearance:none;width:100%;background:#0a0a0c;height:8px;border-radius:4px;border:1px solid #222}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:34px;background:#333;border:2px solid #555;border-radius:4px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.8)}
-.s{display:flex;align-items:center;gap:12px;margin:15px 0}
-.s span{width:80px;font-size:11px;color:var(--mu);text-transform:uppercase;font-weight:700}
-.fx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.fx-pad{background:#181a1f;border:1px solid #2c2f36;border-radius:8px;height:70px;padding:8px;display:flex;flex-direction:column;justify-content:space-between;font-size:11px;font-weight:700;cursor:pointer;box-shadow:inset 0 2px 0 rgba(255,255,255,.02)}
-.fx-pad.active{background:#112a2e;border-color:var(--ac);color:var(--ac);box-shadow:0 0 12px rgba(0,255,204,.3)}
-.fx-pad i{font-style:normal;font-size:16px;align-self:flex-end;opacity:.8}
-#yt-container{width:100%;height:160px;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px}
-.t,.item{padding:10px;background:#141518;border-radius:6px;border:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:6px}
-.t.cur{border-left:3px solid var(--ac);color:var(--ac)}
-.btn-sm{padding:6px 10px;font-size:10px}
-#list,#calls,#songs{max-height:180px;overflow-y:auto}
-#bar{height:4px;background:#000;border-radius:2px;margin:15px 0;overflow:hidden;border:1px solid #222}
-#bar i{display:block;height:100%;width:0;background:var(--ac);box-shadow:0 0 8px var(--ac)}
+:root{--bg:#0a0a0c;--panel:#141418;--accent:#00ffaa;--text:#fff;}
+body{background:var(--bg);color:var(--text);font-family:system-ui;margin:0;padding:10px}
+.c{background:var(--panel);border-radius:12px;padding:15px;margin-bottom:12px;border:1px solid #222}
+.row{display:flex;gap:10px;margin-bottom:10px}
+input,button{background:#222;border:1px solid #333;color:#fff;padding:10px;border-radius:6px;}
+button{background:var(--accent);color:#000;font-weight:bold;cursor:pointer}
+#playlist{max-height:150px;overflow-y:auto;background:#050505;padding:10px;border-radius:6px}
+.track{padding:6px;border-bottom:1px solid #111;display:flex;justify-content:space-between}
+.active-track{color:var(--accent);font-weight:bold}
 </style>
 </head>
 <body>
 
-<h1>📻 Studio Master Pro</h1>
+<h1>📻 Pro DJ Studio</h1>
 
-<div class="pn">
-  <h2>📺 Visual Sync (YouTube)</h2>
-  <div id="yt-container"><div id="yt-player"></div></div>
+<div class="c">
+  <h2>📺 YouTube Sync</h2>
   <div class="row">
-    <input id="ytUrl" placeholder="ID ou Lien YouTube...">
+    <input id="ytUrl" placeholder="Paste YouTube URL/ID" style="flex:1">
     <button onclick="loadYT()">Load</button>
-    <button onclick="bYT('play')" class="on">▶ All</button>
-    <button onclick="bYT('pause')">⏸ All</button>
   </div>
 </div>
 
-<div class="pn">
-  <h2>🎛️ FX & Sampler Pads</h2>
-  <div class="fx-grid">
-    <div class="fx-pad" id="p-sir" onclick="fxSiren()"><i>🚨</i>Siren</div>
-    <div class="fx-pad" id="p-ris" onclick="fxRiser()"><i>🚀</i>Riser</div>
-    <div class="fx-pad" id="p-gat" onclick="fxGate()"><i>🔪</i>Gate</div>
-    <div class="fx-pad" id="p-pha" onclick="fxPhaser()"><i>🌀</i>Phaser</div>
-    <div class="fx-pad" id="p-fla" onclick="fxFlanger()"><i>🌊</i>Flanger</div>
-    <div class="fx-pad" id="p-ech" onclick="fxEcho()"><i>🔊</i>Echo</div>
-    <div class="fx-pad" id="p-hrn" onclick="fxHorn()"><i>📯</i>Horn</div>
-    <div class="fx-pad" id="p-drp" onclick="fxDrop()"><i>💣</i>Drop</div>
+<div class="c">
+  <h2>💽 Pro Automix Decks</h2>
+  <input type="file" id="audioFileInput" multiple>
+  <div id="playlist">No tracks loaded</div>
+  <div class="row" style="margin-top:10px">
+    <button onclick="startMix()" style="flex:1">▶ Start Pro Mix</button>
+    <button onclick="skipTrack()" style="flex:1">⏭ Auto Mix Now</button>
   </div>
 </div>
 
-<div class="pn">
-  <h2>💽 Decks & Mixer</h2>
+<div class="c">
+  <h2>💬 Live Requests</h2>
+  <div id="requestsBox">No requests yet...</div>
+</div>
+
+<div class="c">
+  <h2>📡 Broadcast</h2>
   <div class="row">
-    <label class="b" style="flex:1;text-align:center">Load MP3<input id="f" type="file" multiple hidden></label>
-    <button id="pp" class="on" style="flex:1">▶ Play</button>
-    <button id="next" style="flex:1">⏭ Mix</button>
-    <button id="amx" onclick="tAmx()" class="on" style="flex:1">Auto: ON</button>
+    <input id="roomInput" placeholder="Room Name" value="radio">
+    <input id="keyInput" type="password" placeholder="API Key">
   </div>
-  <canvas id="vz" width="600" height="50" style="width:100%;height:40px;margin-top:15px;background:#000;border-radius:4px"></canvas>
-  <div id="bar"><i id="bF"></i></div>
-  <div id="list"><small style="color:var(--mu)">Aucune piste...</small></div>
-  <div class="s"><span>X-Fader</span><input id="xf" type="range" min="0" max="100" value="50"></div>
-  <div class="s"><span>Pitch</span><input id="rt" type="range" min="0.5" max="1.5" step="0.01" value="1"></div>
-  <div class="s"><span>Filter</span><input id="fl" type="range" min="0" max="100" value="100"></div>
-</div>
-
-<div class="pn">
-  <h2>📞 Studio Calls (Live)</h2>
-  <div id="calls"><small style="color:var(--mu)">Empty queue...</small></div>
-</div>
-
-<div class="pn">
-  <h2>🎵 Audience Requests</h2>
-  <div id="songs"><small style="color:var(--mu)">No requests...</small></div>
-</div>
-
-<div class="pn">
-  <h2>📡 Broadcast System</h2>
-  <div class="row">
-    <input id="rm" value="radio" placeholder="Room">
-    <input id="key" type="password" placeholder="Pass">
-    <button id="live" class="on" style="flex:1">🔴 ON AIR</button>
-  </div>
-  <small id="ls" style="display:block;margin-top:10px;color:var(--mu)">System Ready.</small>
+  <button id="broadcastBtn" onclick="toggleBroadcast()" style="width:100%">🔴 Go Live</button>
+  <div id="status" style="margin-top:5px;font-size:12px">Ready</div>
 </div>
 
 <script>
-let ytP;
-function onYouTubeIframeAPIReady(){ytP=new YT.Player('yt-player',{videoId:'jfKfPfyJRdk'});}
-document.head.appendChild(Object.assign(document.createElement('script'),{src:"https://www.youtube.com/iframe_api"}));
-const $=i=>document.getElementById(i),D=[],T=[];
-let x,M,gG,F,eD,eF,eW,fD,fW,sD,A,R=null,aM=true,cD=0,cI=-1,iP=false,rT=1,gT=null,eO=false,fO=false;
-const cM=new Map(),sM=new Map();
+let ytPlayer, audioCtx, decks = [], trackList = [], currentTrackIdx = -1;
+let isMixing = false, crossfadeDuration = 6, broadcastRoom;
 
-function iA(){
-  if(x)return;x=new(window.AudioContext||window.webkitAudioContext)();
-  M=x.createGain();gG=x.createGain();F=x.createBiquadFilter();F.type='lowpass';F.frequency.value=20000;
-  eD=x.createDelay(2);eD.delayTime.value=.32;eF=x.createGain();eF.gain.value=.45;eW=x.createGain();eW.gain.value=0;
-  fD=x.createDelay(.1);fD.delayTime.value=.005;fW=x.createGain();fW.gain.value=0;
-  const l=x.createOscillator(),d=x.createGain();l.frequency.value=.35;d.gain.value=.003;l.connect(d);d.connect(fD.delayTime);l.start();
-  A=x.createAnalyser();A.fftSize=128;sD=x.createMediaStreamDestination();
-  M.connect(gG);gG.connect(F);F.connect(A);
-  F.connect(eD);eD.connect(eF);eF.connect(eD);eD.connect(eW);eW.connect(A);
-  F.connect(fD);fD.connect(fW);fW.connect(A);
-  A.connect(sD);A.connect(x.destination);
-  for(let k=0;k<2;k++){
-    const e=new Audio();e.crossOrigin="anonymous";const s=x.createMediaElementSource(e),g=x.createGain();
-    s.connect(g);g.connect(M);D.push({e,g});
+const tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+document.head.appendChild(tag);
+function onYouTubeIframeAPIReady() {
+  ytPlayer = new YT.Player('ytPlayer', { height: '0', width: '0', videoId: 'jfKfPfyJRdk' });
+}
+
+document.getElementById('audioFileInput').addEventListener('change', e => {
+  trackList = Array.from(e.target.files);
+  renderPlaylist();
+});
+
+function renderPlaylist() {
+  const container = document.getElementById('playlist');
+  if(trackList.length === 0) return;
+  container.innerHTML = trackList.map((t, i) => 
+    `<div class="track ${i === currentTrackIdx ? 'active-track' : ''}"><span>${i+1}. ${t.name.substring(0,25)}</span></div>`
+  ).join('');
+}
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    for(let i=0; i<2; i++) {
+      let gain = audioCtx.createGain();
+      gain.connect(audioCtx.destination);
+      decks.push({ gain: gain, source: null, buffer: null });
+    }
   }
 }
 
-const fP=(i,m=600)=>{const e=$(i);if(e){e.classList.add('active');setTimeout(()=>e.classList.remove('active'),m);}};
-const fx=(f,m)=>{iA();x.resume();fP(m[0],m[1]);f(x.currentTime);};
-function fxSiren(){fx(n=>{const o=x.createOscillator(),g=x.createGain();o.type='sawtooth';o.frequency.setValueAtTime(550,n);o.frequency.linearRampToValueAtTime(1150,n+.45);o.frequency.linearRampToValueAtTime(550,n+.9);o.frequency.linearRampToValueAtTime(1200,n+1.35);o.frequency.linearRampToValueAtTime(500,n+1.8);g.gain.setValueAtTime(.28,n);g.gain.exponentialRampToValueAtTime(.001,n+1.8);o.connect(g);g.connect(M);o.start(n);o.stop(n+1.8);},['p-sir',1800]);}
-function fxRiser(){fx(n=>{const o=x.createOscillator(),g=x.createGain();o.type='sawtooth';o.frequency.setValueAtTime(120,n);o.frequency.exponentialRampToValueAtTime(2400,n+2.3);g.gain.setValueAtTime(.02,n);g.gain.linearRampToValueAtTime(.32,n+2);g.gain.exponentialRampToValueAtTime(.001,n+2.4);o.connect(g);g.connect(M);o.start(n);o.stop(n+2.4);},['p-ris',2400]);}
-function fxGate(){iA();x.resume();const p=$('p-gat');if(gT){clearInterval(gT);gT=null;gG.gain.setValueAtTime(1,x.currentTime);p.classList.remove('active');}else{p.classList.add('active');let m=false;gT=setInterval(()=>{m=!m;gG.gain.setValueAtTime(m?.05:1,x.currentTime);},110);}}
-function fxPhaser(){fx(n=>{F.frequency.cancelScheduledValues(n);F.frequency.setValueAtTime(18000,n);F.frequency.exponentialRampToValueAtTime(280,n+.7);F.frequency.exponentialRampToValueAtTime(20000,n+1.5);},['p-pha',1500]);}
-function fxFlanger(){iA();x.resume();fO=!fO;$('p-fla').classList.toggle('active',fO);fW.gain.setValueAtTime(fO?.65:0,x.currentTime);}
-function fxEcho(){iA();x.resume();eO=!eO;$('p-ech').classList.toggle('active',eO);eW.gain.setValueAtTime(eO?.55:0,x.currentTime);}
-function fxHorn(){fx(n=>{[390,490,585].forEach(f=>{const o=x.createOscillator(),g=x.createGain();o.type='sawtooth';o.frequency.setValueAtTime(f*.92,n);o.frequency.exponentialRampToValueAtTime(f,n+.07);g.gain.setValueAtTime(.16,n);g.gain.setValueAtTime(.16,n+.65);g.gain.exponentialRampToValueAtTime(.001,n+.9);o.connect(g);g.connect(M);o.start(n);o.stop(n+.9);});},['p-hrn',900]);}
-function fxDrop(){fx(n=>{const o=x.createOscillator(),g=x.createGain();o.type='sine';o.frequency.setValueAtTime(150,n);o.frequency.exponentialRampToValueAtTime(32,n+1.35);g.gain.setValueAtTime(.6,n);g.gain.exponentialRampToValueAtTime(.001,n+1.4);o.connect(g);g.connect(M);o.start(n);o.stop(n+1.4);},['p-drp',1400]);}
+function startMix() {
+  if (trackList.length === 0) return;
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  currentTrackIdx = 0;
+  playTrack(currentTrackIdx, 0);
+  isMixing = true;
+}
 
-const gY=()=>$('ytUrl').value.trim().split(/youtu\.be\/|v=/)[1]?.split(/[?&]/)[0]||$('ytUrl').value.trim();
-const loadYT=()=>ytP&&ytP.loadVideoById(gY());
-const bYT=a=>{if(R&&R.state==='connected'){sDt({type:'yt_control',action:a,videoId:gY()});a==='play'?ytP.playVideo():ytP.pauseVideo();}else alert("Go Live d'abord!");};
-const tAmx=()=>{aM=!aM;$('amx').className=aM?'on':'';};
+function playTrack(trackIdx, delay) {
+  const deck = decks[trackIdx % 2];
+  const nextDeck = decks[(trackIdx + 1) % 2];
+  const file = trackList[trackIdx];
+  const reader = new FileReader();
 
-$('f').onchange=e=>{[...e.target.files].forEach(f=>T.push({n:f.name.replace(/\.[^.]+$/,''),u:URL.createObjectURL(f)}));rP();if(cI<0&&T.length)pT(0,.5);};
-const rP=()=>$('list').innerHTML=T.length?T.map((t,i)=>`<div class="t ${i===cI?'cur':''}" onclick="pT(${i},1)"><span>${i+1}. ${t.n}</span></div>`).join(''):'<small style="color:var(--mu)">Empty...</small>';
-const pT=(i,f=5)=>{if(!T[i])return;iA();x.resume();const nD=D[1-cD],oD=D[cD],n=x.currentTime,s=Math.max(.2,f);nD.e.src=T[i].u;nD.e.playbackRate=rT;nD.e.play().catch(()=>{});nD.g.gain.cancelScheduledValues(n);nD.g.gain.setValueAtTime(.001,n);nD.g.gain.exponentialRampToValueAtTime(1,n+s);if(iP&&oD.e.src){oD.g.gain.cancelScheduledValues(n);oD.g.gain.setValueAtTime(oD.g.gain.value||1,n);oD.g.gain.exponentialRampToValueAtTime(.001,n+s);setTimeout(()=>oD.e.pause(),s*1000);}cD=1-cD;cI=i;iP=true;rP();$('pp').textContent='⏸ Pause';};
-setInterval(()=>{if(!iP||cI<0)return;const d=D[cD].e;if(d.duration){$('bF').style.width=Math.min(100,(d.currentTime/d.duration)*100)+'%';if(aM&&(d.duration-d.currentTime)<=5&&T.length>1)pT((cI+1)%T.length,5);}},800);
-$('pp').onclick=()=>{if(cI<0)return;const d=D[cD].e;iP?(d.pause(),$('pp').textContent='▶ Play'):(d.play(),$('pp').textContent='⏸ Pause');iP=!iP;};
-$('next').onclick=()=>T.length>1&&pT((cI+1)%T.length,2);
-$('xf').oninput=e=>{if(D.length){const v=e.target.value/100;D[0].g.gain.value=1-v;D[1].g.gain.value=v;}};
-$('rt').oninput=e=>{rT=+e.target.value;D.forEach(d=>d.e.playbackRate=rT);};
-$('fl').oninput=e=>{iA();F.frequency.value=200*Math.pow(100,e.target.value/100);};
+  reader.onload = function(e) {
+    audioCtx.decodeAudioData(e.target.result, buffer => {
+      let source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      deck.buffer = buffer;
+      deck.source = source;
+      
+      deck.gain.gain.setValueAtTime(0.001, audioCtx.currentTime + delay);
+      deck.gain.gain.exponentialRampToValueAtTime(1, audioCtx.currentTime + delay + 2);
+      
+      source.connect(deck.gain);
+      source.start(audioCtx.currentTime + delay);
 
-const api=async(p,b,k)=>{const r=await fetch(p,{method:'POST',body:JSON.stringify({...(b||{}),key:k||''}),headers:{'content-type':'application/json'}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'HTTP '+r.status);return j;};
-$('live').onclick=async()=>{
-  const k=$('key').value.trim();if(!k)return alert('Pass DJ requis');
-  try{
-    await api('/api/check',{},k);iA();await x.resume();
-    const j=await api('/api/token',{role:'host',room:$('rm').value.trim()||'radio'},k);
-    R=new LivekitClient.Room();await R.connect(j.url,j.token);
-    R.on(LivekitClient.RoomEvent.DataReceived,p=>{try{const m=JSON.parse(new TextDecoder().decode(p));if(m.type==='call_req'){cM.set(m.id,m);rC();}else if(m.type==='call_end'||m.type==='call_reject'){cM.delete(m.id);rC();}else if(m.type==='new_song'){sM.set(m.id,{...m,v:0});rS();}else if(m.type==='vote_song'){if(sM.has(m.id)){sM.get(m.id).v++;rS();}}}catch(e){}});
-    await R.localParticipant.publishTrack(sD.stream.getAudioTracks()[0],{name:'mix',forceStereo:true});
-    $('ls').innerHTML="<b style='color:#00ffcc'>📡 ON AIR</b>";$('live').textContent="⏹ Stop";$('live').onclick=()=>location.reload();
-  }catch(e){$('ls').textContent="❌ "+e.message;}
-};
-const sDt=o=>R&&R.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(o)),{reliable:true});
-window.aC=i=>{if(cM.has(i)){sDt({type:'call_accept',id:i});cM.delete(i);rC();}};
-window.kC=i=>{sDt({type:'call_kick',id:i});cM.delete(i);rC();};
-const rC=()=>$('calls').innerHTML=cM.size?Array.from(cM.values()).map(c=>`<div class="item">🎙️ ${c.name}<div><button class="btn-sm" style="background:#10b981;color:#fff;border:0" onclick="aC('${c.id}')">Accept</button> <button class="btn-sm" style="background:#ef4444;color:#fff;border:0" onclick="kC('${c.id}')">Kick</button></div></div>`).join(''):'<small style="color:var(--mu)">Empty queue...</small>';
-const rS=()=>$('songs').innerHTML=sM.size?Array.from(sM.values()).sort((a,b)=>b.v-a.v).map(s=>`<div class="item"><b>${s.title}</b> <small style="color:var:#00ffcc'>(${s.v} votes)</small> <button class="btn-sm" style="background:var(--ac2);color:#fff;border:0" onclick="lR('${s.title.replace(/'/g,"\\'")}')">Load YT</button></div>`).join(''):'<small style="color:var(--mu)">No requests...</small>';
-window.lR=t=>{$('ytUrl').value=t;loadYT();};
-(function dr(){requestAnimationFrame(dr);if(!$('vz')||!A)return;const c=$('vz'),x=c.getContext('2d'),d=new Uint8Array(A.frequencyBinCount);A.getByteFrequencyData(d);x.clearRect(0,0,c.width,c.height);x.fillStyle='#00ffcc';d.forEach((v,i)=>{const h=v/255*c.height;x.fillRect(i*(c.width/d.length)+1,c.height-h,(c.width/d.length)-2,h);});})();
+      const duration = buffer.duration;
+      const nextDelay = duration - crossfadeDuration;
+      
+      setTimeout(() => {
+        if (isMixing && trackList.length > 1) {
+          crossfadeDecks(deck, nextDeck);
+          currentTrackIdx = (currentTrackIdx + 1) % trackList.length;
+          renderPlaylist();
+          playTrack(currentTrackIdx, crossfadeDuration);
+        }
+      }, (nextDelay + delay) * 1000);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function crossfadeDecks(outgoingDeck, incomingDeck) {
+  const now = audioCtx.currentTime;
+  outgoingDeck.gain.gain.setValueAtTime(outgoingDeck.gain.gain.value, now);
+  outgoingDeck.gain.gain.linearRampToValueAtTime(0.001, now + crossfadeDuration);
+}
+
+function skipTrack() {
+  if(!isMixing || trackList.length <= 1) return;
+  const currentDeck = decks[currentTrackIdx % 2];
+  const nextDeck = decks[(currentTrackIdx + 1) % 2];
+  crossfadeDecks(currentDeck, nextDeck);
+  currentTrackIdx = (currentTrackIdx + 1) % trackList.length;
+  renderPlaylist();
+  playTrack(currentTrackIdx, crossfadeDuration);
+}
+
+async function toggleBroadcast() {
+  initAudio();
+  const roomName = document.getElementById('roomInput').value;
+  const apiKey = document.getElementById('keyInput').value;
+  if(!apiKey) { alert('API Key required'); return; }
+  
+  const dest = audioCtx.createMediaStreamDestination();
+  decks.forEach(d => d.gain.connect(dest));
+
+  try {
+    const res = await fetch('/api/token', {
+      method:'POST', body: JSON.stringify({room: roomName, key: apiKey}),
+      headers:{'Content-Type':'application/json'}
+    });
+    const data = await res.json();
+    broadcastRoom = new LivekitClient.Room();
+    await broadcastRoom.connect(data.url, data.token);
+    await broadcastRoom.localParticipant.publishTrack(dest.stream.getAudioTracks()[0]);
+    
+    broadcastRoom.on(LivekitClient.RoomEvent.DataReceived, payload => {
+      const msg = JSON.parse(new TextDecoder().decode(payload));
+      if (msg.type === 'song_request') {
+        document.getElementById('requestsBox').innerHTML += `<p>🎵 ${msg.song}</p>`;
+      }
+    });
+    document.getElementById('status').innerText = "🟢 Broadcasting Live";
+  } catch(e) {
+    document.getElementById('status').innerText = "🔴 Error: " + e.message;
+  }
+}
 </script>
-</body></html>
+</body>
+</html>
