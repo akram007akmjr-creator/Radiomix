@@ -181,7 +181,9 @@ function rP(){
   list.innerHTML=tracks.map((t,i)=>`<div class="t ${i===idx?'cur':''}" onclick="pT(${i},1)"><span>${i+1}. ${t.n}</span><span>${i===idx?'🔊 Playing':''}</span></div>`).join('');
 }
 function pT(i,fade=fadeDur){
-  if(!tracks[i])return;initAudio();ctx.resume();
+  if(!tracks[i])return;
+  if(ytP){ytP.pauseVideo();$('pp').textContent='▶ Play';isPlaying=false;}
+  initAudio();ctx.resume();
   const nD=decks[1-cur],oD=decks[cur],now=ctx.currentTime,sf=Math.max(0.5,fade);
   nD.el.src=tracks[i].u;nD.el.playbackRate=rate;nD.el.play().catch(()=>{});
   nD.gain.gain.cancelScheduledValues(now);nD.gain.gain.setValueAtTime(0.001,now);nD.gain.gain.exponentialRampToValueAtTime(1,now+sf);
@@ -222,8 +224,7 @@ $('live').onclick=async()=>{
     room=new LivekitClient.Room();await room.connect(j.url,j.token);
     room.on(LivekitClient.RoomEvent.DataReceived,(payload, participant, kind, topic)=>{
       try{
-        const decoder = new TextDecoder();
-        const str = decoder.decode(payload);
+        const str = new TextDecoder().decode(payload);
         const m = JSON.parse(str);
         
         if(m.type==='call_req'){
