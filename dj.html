@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>📻 Radio DJ - Complete Studio Pro</title>
+  <title>📻 Radio DJ - Complete Studio Pro + Smart FX</title>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/dist/livekit-client.umd.min.js"></script>
   <style>
     :root {
       --bg: #0e0b1a; --card: #191430; --tx: #f3f0ff; --mu: #9d95c4;
       --ac: #ff4d8d; --ac2: #7c5cff; --bd: #2e2750; color-scheme: dark;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
     body {
       margin: 0; background: var(--bg); color: var(--tx);
       font: 15px system-ui, sans-serif; padding: 14px; max-width: 680px; margin: auto;
     }
     h1 {
-      font-size: 26px; margin: 4px 0 12px;
+      font-size: 25px; margin: 4px 0 12px;
       background: linear-gradient(90deg, var(--ac), var(--ac2));
       -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800;
     }
@@ -30,7 +30,7 @@
     }
     button, label.b {
       background: #fff; color: #1b1030; border: 0; border-radius: 12px;
-      padding: 12px 16px; font-size: 14px; font-weight: 700; cursor: pointer; transition: .2s;
+      padding: 12px 16px; font-size: 14px; font-weight: 700; cursor: pointer; transition: .15s;
     }
     button.on { background: linear-gradient(90deg, var(--ac), var(--ac2)); color: #fff; }
     button:active { transform: scale(.96); }
@@ -45,16 +45,39 @@
     .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
     input {
       flex: 1; background: rgba(0,0,0,.4); border: 1px solid var(--bd); color: #fff;
-      padding: 12px 14px; border-radius: 12px; outline: none; font-size: 14px;
+      padding: 12px 14px; border-radius: 12px; outline: none; font-size: 14px; user-select: text; -webkit-user-select: text;
     }
     input:focus { border-color: var(--ac); }
-    .btn-live {
-      background: linear-gradient(90deg, var(--ac), var(--ac2)); color: #fff;
-      width: 100%; padding: 14px; font-size: 16px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+
+    /* Smart FX & Sampler Grid (edjing style) */
+    .fx-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .fx-tab {
+      background: rgba(255,255,255,0.08); color: var(--tx); padding: 6px 12px;
+      border-radius: 8px; font-size: 12px; font-weight: 700;
     }
-    #live.on { animation: pl 1.4s infinite; }
-    @keyframes pl { 50% { opacity: .65; } }
+    .fx-tab.active { background: var(--ac2); color: #fff; }
+    .fx-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    .fx-pad {
+      background: #110d22; border: 1px solid var(--bd); border-radius: 12px;
+      height: 78px; padding: 10px; display: flex; flex-direction: column;
+      justify-content: space-between; align-items: flex-start;
+      color: var(--tx); font-size: 13px; font-weight: 700; position: relative;
+      overflow: hidden; cursor: pointer; transition: 0.12s;
+    }
+    .fx-pad small { font-size: 10px; color: var(--mu); font-weight: 500; }
+    .fx-pad i { align-self: flex-end; font-style: normal; font-size: 15px; opacity: 0.7; }
+    .fx-pad.active, .fx-pad:active {
+      border-color: var(--ac);
+      background: linear-gradient(135deg, rgba(255,77,141,0.28), rgba(124,92,255,0.28));
+      box-shadow: 0 0 16px rgba(255,77,141,0.45);
+      transform: scale(0.96);
+    }
+    .pro-badge {
+      font-size: 9px; background: rgba(16, 185, 129, 0.2); color: #10b981;
+      padding: 2px 6px; border-radius: 5px; border: 1px solid rgba(16,185,129,0.4);
+    }
 
     /* List & Calls */
     #list, #calls, #songs { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
@@ -68,8 +91,8 @@
     .btn-sm { padding: 6px 12px; font-size: 12px; }
     .btn-ac { background: #10b981; color: #fff; }
     .btn-dc { background: #ef4444; color: #fff; }
-    #bar { height: 6px; background: var(--bd); border-radius: 3px; margin-top: 14px; }
-    #bar i { display: block; height: 100%; width: 0; background: var(--ac); border-radius: 3px; }
+    #bar { height: 6px; background: var(--bd); border-radius: 3px; margin-top: 14px; overflow: hidden; }
+    #bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--ac), var(--ac2)); border-radius: 3px; transition: width 0.3s; }
   </style>
 </head>
 <body>
@@ -78,7 +101,7 @@
 
 <!-- YouTube Deck -->
 <div class="c">
-  <h2>📺 YouTube Player Deck (Visual Only)</h2>
+  <h2>📺 YouTube Player Deck (Visual & Sync)</h2>
   <div id="yt-container"><div id="yt-player"></div></div>
   <div class="input-row">
     <input id="ytUrl" placeholder="Lien YouTube ou ID (ex: jNQXAC9IVRw)...">
@@ -90,333 +113,21 @@
   </div>
 </div>
 
-<!-- MP3 Decks & Automix -->
+<!-- Smart FX & Grid FX Pad -->
 <div class="c">
-  <h2>💽 MP3 Decks & Automix</h2>
-  <div class="row">
-    <label class="b">➕ Zid MP3<input id="f" type="file" multiple hidden></label>
-    <button id="pp" class="on" style="flex:1">▶ Play</button>
-    <button id="next">⏭ Mixer Now</button>
-    <button id="automixBtn" onclick="toggleAutomix()" class="on" style="background:var(--bd)">Automix: ON</button>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <h2 style="margin:0">🎛️ Smart FX & Sampler Pad</h2>
+    <span class="pro-badge">⚡ PRO UNLOCKED</span>
   </div>
-  <canvas id="vz" width="600" height="70" style="width:100%;height:60px;margin-top:12px;background:#000;border-radius:8px"></canvas>
-  <div id="bar"><i></i></div>
-  <div id="list" style="margin-top:12px"><small style="color:var(--mu)">Zid chi ghnaya bach tbda…</small></div>
-
-  <div class="s"><span>Crossfader</span><input id="xf" type="range" min="0" max="100" value="50"></div>
-  <div class="s"><span>Pitch / Vitesse</span><input id="rate" type="range" min="0.5" max="1.5" step="0.01" value="1"><b id="rv">1.00x</b></div>
-  <div class="s"><span>Filtre</span><input id="flt" type="range" min="0" max="100" value="100"></div>
-</div>
-
-<!-- Listener Call Queue -->
-<div class="c">
-  <h2>📞 Demandes d'Appel (LIVE)</h2>
-  <div id="calls"><small style="color:var(--mu)">Aucun appel en attente…</small></div>
-</div>
-
-<!-- Song Requests & Polls -->
-<div class="c">
-  <h2>🎵 Sondage & Demandes d'auditeurs</h2>
-  <div id="songs"><small style="color:var(--mu)">Pas de propositions pour le moment…</small></div>
-</div>
-
-<!-- LiveKit Broadcast -->
-<div class="c">
-  <h2>🔐 LiveKit Broadcast</h2>
-  <div class="row">
-    <input id="rm" value="radio" placeholder="Smiyt radio">
-    <input id="key" type="password" placeholder="Mot de passe DJ">
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button id="chk" style="flex:1">🔎 Vérifier</button>
-    <button id="live" class="on" style="flex:1">🔴 Go Live</button>
-  </div>
-  <small id="ls" style="display:block;margin-top:8px;color:var(--mu)">Prêt à diffuser.</small>
-</div>
-
-<script>
-let player;
-function onYouTubeIframeAPIReady() {
-  player = new YT.Player('yt-player', {
-    videoId: 'jfKfPfyJRdk',
-    events: { onReady: () => console.log('YT Ready') }
-  });
-}
-const tag = document.createElement('script');
-tag.src = "https://www.youtube.com/iframe_api";
-const firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-const $ = id => document.getElementById(id);
-let ctx, decks = [], tracks = [], cur = 0, idx = -1, isPlaying = false, rate = 1;
-let master, filt, streamDest, analyser;
-let room = null, automixEnabled = true, fadeDuration = 5;
-let callsMap = new Map();
-let songsMap = new Map();
-
-function initAudio() {
-  if (ctx) return;
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
-  master = ctx.createGain();
-  filt = ctx.createBiquadFilter();
-  filt.type = 'lowpass'; filt.frequency.value = 20000;
-  master.connect(filt);
-  analyser = ctx.createAnalyser(); analyser.fftSize = 128;
-  filt.connect(analyser);
-  streamDest = ctx.createMediaStreamDestination();
-  filt.connect(streamDest);
-  filt.connect(ctx.destination);
-  for (let k = 0; k < 2; k++) decks.push(mkDeck());
-}
-
-function mkDeck() {
-  const el = new Audio();
-  el.crossOrigin = "anonymous";
-  const src = ctx.createMediaElementSource(el);
-  const g = ctx.createGain();
-  src.connect(g);
-  g.connect(master);
-  return { el, gain: g };
-}
-
-function loadYouTubeLocal() {
-  const input = $('ytUrl').value.trim();
-  let id = input;
-  if (input.includes('youtu.be/')) id = input.split('youtu.be/')[1].split('?')[0];
-  else if (input.includes('v=')) id = input.split('v=')[1].split('&')[0];
-  if (player && id) player.loadVideoById(id);
-}
-
-function broadcastYT(action) {
-  if (room && room.state === 'connected') {
-    const data = new TextEncoder().encode(JSON.stringify({ type: 'yt_control', action }));
-    room.localParticipant.publishData(data, { reliable: true });
-    if (player) {
-      if (action === 'play') player.playVideo();
-      else if (action === 'pause') player.pauseVideo();
-    }
-  } else {
-    alert("Connectez LiveKit et lancez le Live d'abord !");
-  }
-}
-
-function toggleAutomix() {
-  automixEnabled = !automixEnabled;
-  const btn = $('automixBtn');
-  btn.textContent = `Automix: ${automixEnabled ? 'ON' : 'OFF'}`;
-  btn.style.background = automixEnabled ? 'linear-gradient(90deg,var(--ac),var(--ac2))' : 'var(--bd)';
-}
-
-// Playlist Handling
-$('f').onchange = e => {
-  [...e.target.files].forEach(f => tracks.push({ name: f.name.replace(/\.[^.]+$/,''), url: URL.createObjectURL(f) }));
-  renderPlaylist();
-  if (idx < 0 && tracks.length > 0) playTrack(0);
-};
-
-function renderPlaylist() {
-  const list = $('list');
-  if (!tracks.length) { list.innerHTML = '<small style="color:var(--mu)">Zid chi ghnaya bach tbda…</small>'; return; }
-  list.innerHTML = tracks.map((t, i) => `
-    <div class="t ${i === idx ? 'cur' : ''}" onclick="playTrack(${i}, 0)">
-      <span>${i + 1}. ${t.name}</span>
+  <div class="fx-grid">
+    <div class="fx-pad" id="pad-siren" onclick="triggerSiren()">
+      <i>🚨</i>
+      <div>Siren<br><small>SFX Synth</small></div>
     </div>
-  `).join('');
-}
-
-function playTrack(i, fade = fadeDuration) {
-  if (!tracks[i]) return;
-  initAudio(); ctx.resume();
-  const nextIdx = i;
-  const nextTrackObj = tracks[nextIdx];
-  const nextDeck = decks[1 - cur];
-  const currentDeck = decks[cur];
-  const now = ctx.currentTime;
-
-  nextDeck.el.src = nextTrackObj.url;
-  nextDeck.el.playbackRate = rate;
-  nextDeck.el.play().catch(() => {});
-
-  nextDeck.gain.gain.cancelScheduledValues(now);
-  nextDeck.gain.gain.setValueAtTime(0.001, now);
-  nextDeck.gain.gain.exponentialRampToValueAtTime(1, now + fade);
-
-  if (isPlaying && currentDeck.el.src) {
-    currentDeck.gain.gain.cancelScheduledValues(now);
-    currentDeck.gain.gain.setValueAtTime(currentDeck.gain.gain.value || 1, now);
-    currentDeck.gain.gain.exponentialRampToValueAtTime(0.001, now + fade);
-    setTimeout(() => {
-      currentDeck.el.pause();
-    }, fade * 1000);
-  }
-
-  cur = 1 - cur;
-  idx = nextIdx;
-  isPlaying = true;
-  renderPlaylist();
-  $('pp').textContent = '⏸ Pause';
-}
-
-setInterval(() => {
-  if (!isPlaying || idx < 0 || !automixEnabled) return;
-  const activeDeck = decks[cur].el;
-  if (activeDeck.duration && activeDeck.currentTime) {
-    const remaining = activeDeck.duration - activeDeck.currentTime;
-    if (remaining <= fadeDuration && tracks.length > 1) {
-      const nextI = (idx + 1) % tracks.length;
-      playTrack(nextI, fadeDuration);
-    }
-  }
-}, 1000);
-
-$('pp').onclick = () => {
-  if (idx < 0) return;
-  const activeDeck = decks[cur].el;
-  if (isPlaying) { activeDeck.pause(); isPlaying = false; $('pp').textContent = '▶ Play'; }
-  else { activeDeck.play(); isPlaying = true; $('pp').textContent = '⏸ Pause'; }
-};
-
-$('next').onclick = () => {
-  if (tracks.length < 2) return;
-  const nextI = (idx + 1) % tracks.length;
-  playTrack(nextI, 2);
-};
-
-// Mixer Controls
-$('xf').oninput = e => {
-  if (!decks.length) return;
-  const val = e.target.value / 100;
-  decks[0].gain.gain.value = 1 - val;
-  decks[1].gain.gain.value = val;
-};
-
-$('rate').oninput = e => {
-  rate = +e.target.value;
-  $('rv').textContent = rate.toFixed(2) + 'x';
-  decks.forEach(d => { d.el.playbackRate = rate; });
-};
-
-$('flt').oninput = e => {
-  initAudio();
-  filt.frequency.value = 200 * Math.pow(100, e.target.value / 100);
-};
-
-// LiveKit & Data Channels Logic
-async function api(path, body, key) {
-  const r = await fetch(path, {
-    method: 'POST', body: JSON.stringify({ ...(body || {}), key: key || '' }),
-    headers: { 'content-type': 'application/json' }
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-  return j;
-}
-
-async function check() {
-  const key = $('key').value.trim();
-  if (!key) { alert('Entrez le mot de passe DJ'); return false; }
-  try { await api('/api/check', {}, key); $('ls').textContent = "✅ LiveKit Connecté"; return true; }
-  catch(e) { $('ls').textContent = "❌ Erreur: " + e.message; return false; }
-}
-
-async function goLive() {
-  if (!await check()) return;
-  const L = LivekitClient;
-  try {
-    const j = await api('/api/token', { role: 'host', room: $('rm').value.trim() || 'radio' }, $('key').value.trim());
-    room = new L.Room();
-    await room.connect(j.url, j.token);
-    room.on(L.RoomEvent.DataReceived, (payload, participant) => {
-      try {
-        const msg = JSON.parse(new TextDecoder().decode(payload));
-        if (msg.type === 'call_req') {
-          callsMap.set(msg.id, { name: msg.name, id: msg.id });
-          renderCalls();
-        } else if (msg.type === 'call_end' || msg.type === 'call_reject') {
-          callsMap.delete(msg.id);
-          renderCalls();
-        } else if (msg.type === 'new_song') {
-          songsMap.set(msg.id, { title: msg.title, id: msg.id, votes: 0 });
-          renderSongs();
-        } else if (msg.type === 'vote_song') {
-          const s = songsMap.get(msg.id);
-          if (s) { s.votes++; renderSongs(); }
-        }
-      } catch(e) {}
-    });
-
-    await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0], { name: 'mix', forceStereo: true });
-    $('live').textContent = "🔴 En Direct"; $('live').style.background = "#ef4444";
-  } catch(e) { alert("LiveKit Error: " + e.message); }
-}
-
-function sendData(obj) {
-  if (room && room.state === 'connected') {
-    const data = new TextEncoder().encode(JSON.stringify(obj));
-    room.localParticipant.publishData(data, { reliable: true });
-  }
-}
-
-window.acceptCall = async (id) => {
-  const c = callsMap.get(id);
-  if (c) {
-    sendData({ type: 'call_accept', id: id });
-    callsMap.delete(id);
-    renderCalls();
-  }
-};
-
-window.kickCall = async (id) => {
-  sendData({ type: 'call_kick', id: id });
-  callsMap.delete(id);
-  renderCalls();
-};
-
-function renderCalls() {
-  const box = $('calls');
-  if (callsMap.size === 0) { box.innerHTML = '<small style="color:var(--mu)">Aucun appel en attente…</small>'; return; }
-  box.innerHTML = Array.from(callsMap.values()).map(c => `
-    <div class="item">
-      <span>${c.name}</span>
-      <div class="actions">
-        <button class="btn-sm btn-ac" onclick="acceptCall('${c.id}')">📞 Accepter</button>
-        <button class="btn-sm btn-dc" onclick="kickCall('${c.id}')">🚫 Rejeter</button>
-      </div>
+    <div class="fx-pad" id="pad-riser" onclick="triggerRiser()">
+      <i>🚀</i>
+      <div>Riser<br><small>Drop Sweep</small></div>
     </div>
-  `).join('');
-}
-
-function renderSongs() {
-  const box = $('songs');
-  if (songsMap.size === 0) { box.innerHTML = '<small style="color:var(--mu)">Pas de propositions pour le moment…</small>'; return; }
-  const sorted = Array.from(songsMap.values()).sort((a,b) => b.votes - a.votes);
-  box.innerHTML = sorted.map(s => `
-    <div class="item">
-      <div><strong>${s.title}</strong></div>
-      <div>⚡️ ${s.votes} votes</div>
-    </div>
-  `).join('');
-}
-
-$('chk').onclick = check;
-$('live').onclick = () => room ? room.disconnect() : goLive();
-
-// Visualizer Loop
-(function draw() {
-  requestAnimationFrame(draw);
-  const c = $('vz'); if (!c) return;
-  const x = c.getContext('2d');
-  x.clearRect(0, 0, c.width, c.height);
-  if (!analyser) return;
-  const d = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(d);
-  const w = c.width / d.length;
-  x.fillStyle = '#ff4d8d';
-  d.forEach((v, i) => {
-    const h = v / 255 * c.height;
-    x.fillRect(i * w + 1, c.height - h, w - 2, h);
-  });
-})();
-</script>
-</body>
-</html>
+    <div class="fx-pad" id="pad-gate" onclick="toggleGate()">
+      <i>🔪</i>
+      <div>Gate<br><small>Beat Cut</small></div>
