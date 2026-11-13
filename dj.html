@@ -220,22 +220,26 @@ $('live').onclick=async()=>{
     await api('/api/check',{},k);initAudio();await ctx.resume();
     const j=await api('/api/token',{role:'host',room:$('rm').value.trim()||'radio'},k);
     room=new LivekitClient.Room();await room.connect(j.url,j.token);
-    room.on(LivekitClient.RoomEvent.DataReceived,p=>{
+    room.on(LivekitClient.RoomEvent.DataReceived,(payload, participant, kind, topic)=>{
       try{
-        const m=JSON.parse(new TextDecoder().decode(p));
+        const decoder = new TextDecoder();
+        const str = decoder.decode(payload);
+        const m = JSON.parse(str);
+        
         if(m.type==='call_req'){
           callsMap.set(m.id,{name:m.name,id:m.id});
           rC();
         }else if(m.type==='call_end'||m.type==='call_reject'){
           callsMap.delete(m.id);
           rC();
-        }else if(m.type==='new_song'){
-          songsMap.set(m.id,{title:m.title,id:m.id,votes:0});
+        }else if(m.type==='new_song' || m.type==='song_request'){
+          const sId = m.id || Math.random().toString();
+          songsMap.set(sId,{title:m.title||m.song,id:sId,votes:m.votes || 0});
           rS();
         }else if(m.type==='vote_song'){
-          const s=songsMap.get(m.id);if(s){s.votes++;rS();}
+          const s = songsMap.get(m.id);if(s){s.votes++;rS();}
         }
-      }catch(e){}
+      }catch(e){console.error("Data parse err:", e);}
     });
     await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0],{name:'mix',forceStereo:true});
     $('live').textContent="⏹ Stop Live";$('ls').innerHTML="<b style='color:#00ffcc'>🎙️ ON AIR</b>";
