@@ -26,7 +26,8 @@ h1{background:linear-gradient(90deg,#ff4d8d,#7c5cff);-webkit-background-clip:tex
 button.on,.on{background:linear-gradient(90deg,#ff4d8d,#7c5cff);border:0;color:#fff}
 #live.on{animation:pl 1.4s infinite}@keyframes pl{50%{opacity:.65}}
 input[type=range]{accent-color:#ff4d8d}
-</style></head><body>
+</style><script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/dist/livekit-client.umd.min.js"></script>
+</head><body>
 <h1>📻 Radio DJ</h1>
 
 <div class="c"><h2>Playlist</h2>
@@ -39,10 +40,11 @@ input[type=range]{accent-color:#ff4d8d}
 <canvas id="vz" width="600" height="90" style="width:100%;height:70px;margin-top:10px"></canvas>
 <div id="bar"><i></i></div></div>
 
-<div class="c"><h2>Live</h2>
-<div class="row"><input id="key" type="password" placeholder="Mot de passe DJ" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)">
-<button id="live">🔴 Go Live</button></div>
-<small id="ls">Dghet Go Live bach t3ti l'lien l sa7abek.</small>
+<div class="c"><h2>Live (LiveKit)</h2>
+<div class="row"><input id="rm" value="radio" placeholder="Smiyt radio" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)">
+<input id="key" type="password" placeholder="Mot de passe DJ" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)"></div>
+<div class="row" style="margin-top:8px"><button id="chk">🔎 Vérifier LiveKit</button><button id="live">🔴 Go Live</button></div>
+<small id="ls" style="display:block;margin-top:8px">Vérifier kay't2akked mn l'clés direct m3a LiveKit Cloud.</small>
 <div id="lnk" style="margin-top:8px;word-break:break-all"></div></div>
 
 <div class="c"><h2>Voix / Instru</h2>
@@ -126,31 +128,39 @@ setInterval(()=>{
 
 
 $('key').value=sessionStorage.getItem('hk')||'';
-let hostPc=null;
+let room=null,wl=null;
 const say=t=>$('ls').textContent=t;
+const rname=()=>($('rm').value.trim().replace(/[^\w-]/g,'').slice(0,40))||'radio';
+async function api(path,body,key){const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...(body||{}),key:key||''})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
+async function check(){
+  const key=$('key').value.trim();if(!key){say('Dkhel l\'mot de passe');return false}
+  sessionStorage.setItem('hk',key);say('Kan t2akked mn LiveKit Cloud…');
+  try{const j=await api('/api/check',{},key);say('✅ LiveKit OK ('+j.host+')');return true}catch(e){say('❌ '+e.message);return false}
+}
+function ui(on){
+  const b=$('live');b.textContent=on?'⏹ Stop':'🔴 Go Live';b.classList.toggle('on',on);
+  if(on){const link=location.origin+'/?r='+rname();$('lnk').innerHTML='<b></b><div style="margin-top:8px"><button id="cp" style="width:100%">📋 Copier / Partager l\'lien</button></div>';$('lnk').firstChild.textContent=link;$('cp').onclick=()=>{if(navigator.share)navigator.share({url:link,title:'Radio'}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(link);$('cp').textContent='✓ Lien jahez'}}
+  else{$('lnk').textContent='';say('Live wa9ef')}
+}
 async function goLive(){
   init();await ctx.resume();
-  const key=$('key').value.trim();if(!key)return say('Dkhel l\'mot de passe');
-  sessionStorage.setItem('hk',key);say('Kan7ell l\'live…');
+  if(!await check())return;
+  const L=LivekitClient;
   try{
-    hostPc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'}],bundlePolicy:'max-bundle'});
-    const tr=hostPc.addTransceiver(streamDest.stream.getAudioTracks()[0],{direction:'sendonly'});
-    await hostPc.setLocalDescription(await hostPc.createOffer());
-    const r=await fetch('/api/host/start',{method:'POST',headers:{'content-type':'application/json','x-host-key':key},body:JSON.stringify({sdp:hostPc.localDescription.sdp,mid:tr.mid})});
-    const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);
-    await hostPc.setRemoteDescription(j.sessionDescription);
-    const link=location.origin+'/?s='+j.sessionId;$('lnk').innerHTML='<b></b><div style="margin-top:8px"><button id="cp" style="width:100%">📋 Copier / Partager l\'lien</button></div>';$('lnk').firstChild.textContent=link;$('cp').onclick=()=>{if(navigator.share)navigator.share({url:link,title:'Radio'}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(link);$('cp').textContent='✓ Lien jahez'};
-    try{const p=tr.sender.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=128000;await tr.sender.setParameters(p)}catch(e){}
-    hostPc.onconnectionstatechange=()=>{const c=hostPc&&hostPc.connectionState;if(c==='connected'){say('🔴 LIVE — sift l\'lien l sa7abek');$('live').textContent='⏹ Stop';$('live').classList.add('on')}else if(c==='failed'||c==='disconnected')say('Connexion t9te3at ('+c+')')};
-  }catch(e){say('Error: '+e.message);if(hostPc){hostPc.close();hostPc=null}}
+    const j=await api('/api/token',{role:'host',room:rname()},$('key').value.trim());
+    room=new L.Room();
+    const upd=()=>{if(room)say('🔴 LIVE — '+room.remoteParticipants.size+' sa7ab kay-sm3o')};
+    room.on(L.RoomEvent.ParticipantConnected,upd).on(L.RoomEvent.ParticipantDisconnected,upd);
+    room.on(L.RoomEvent.Disconnected,()=>{room=null;ui(false);if(wl){wl.release().catch(()=>{});wl=null}});
+    await room.connect(j.url,j.token);
+    await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0],{name:'mix',audioPreset:{maxBitrate:128000},dtx:false,red:false,forceStereo:true});
+    ui(true);upd();
+    try{wl=await navigator.wakeLock.request('screen')}catch(e){}
+  }catch(e){say('Error: '+e.message);if(room){const r=room;room=null;r.disconnect()}}
 }
-async function stopLive(){
-  if(hostPc){hostPc.close();hostPc=null}
-  fetch('/api/host/stop',{method:'POST',headers:{'content-type':'application/json','x-host-key':$('key').value.trim()}});
-  $('live').textContent='🔴 Go Live';$('live').classList.remove('on');say('Live wa9ef');$('lnk').textContent='';
-}
-$('live').onclick=()=>hostPc?stopLive():goLive();
-addEventListener('pagehide',()=>{if(hostPc)fetch('/api/host/stop',{method:'POST',keepalive:true,headers:{'content-type':'application/json'},body:JSON.stringify({key:$('key').value.trim()})})});
+$('chk').onclick=check;
+$('live').onclick=()=>room?room.disconnect():goLive();
+addEventListener('pagehide',()=>{if(room)room.disconnect()});
 
 (function draw(){requestAnimationFrame(draw);const c=$('vz'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);if(!an)return;const d=new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(d);const w=c.width/d.length,g=x.createLinearGradient(0,0,c.width,0);g.addColorStop(0,'#ff4d8d');g.addColorStop(1,'#7c5cff');x.fillStyle=g;d.forEach((v,i)=>{const h=v/255*c.height;x.fillRect(i*w+1,c.height-h,w-2,h)})})();
 </script></body></html>

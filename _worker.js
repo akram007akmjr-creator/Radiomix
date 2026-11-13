@@ -16,6 +16,16 @@ async function makeToken(env, identity, video, ttl = 3600) {
   return h + "." + p + "." + b64u(sig);
 }
 
+// Password check: exact match (no regex, no format limits). Both sides are trimmed and Unicode-normalized
+// so a trailing space/newline saved in Cloudflare or iOS accents (NFC/NFD) cannot cause a false mismatch.
+const norm = (s) => String(s ?? "").normalize("NFC").trim();
+async function samePassword(a, b) {
+  const [x, y] = await Promise.all([a, b].map(async (v) => new Uint8Array(await crypto.subtle.digest("SHA-256", te.encode(norm(v))))));
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  return d === 0;
+}
+
 const httpUrl = (u) => u.replace(/^wss:/, "https:").replace(/^ws:/, "http:").replace(/\/+$/, "");
 
 export default {
@@ -26,7 +36,7 @@ export default {
     const missing = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "HOST_KEY"].filter((k) => !env[k]);
     if (missing.length) return json({ error: "Variables nqsin f Cloudflare: " + missing.join(", ") }, 500);
     const body = await req.json().catch(() => ({}));
-    const hostOk = (req.headers.get("x-host-key") || body.key) === env.HOST_KEY;
+    const hostOk = await samePassword(body.key, env.HOST_KEY);
 
     try {
       // Verifies the key/secret directly against LiveKit Cloud (server API call).
