@@ -70,7 +70,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <div class="row">
     <label class="b" style="flex:1;text-align:center">Load MP3<input id="f" type="file" multiple hidden></label>
     <button id="pp" class="on" style="flex:1">▶ Play</button>
-    <button id="next" style="flex:1">⏭ Mix Now</button>
+    <button id="next" style="flex:1" onclick="triggerMixNow()">⏭ Mix Now</button>
     <button id="amx" onclick="tAmx()" class="on" style="flex:1">Auto: ON</button>
   </div>
   <canvas id="vz" width="600" height="60" style="width:100%;height:50px;margin-top:15px;background:#000;border-radius:6px"></canvas>
@@ -104,7 +104,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 let ytP,ctx,decks=[],tracks=[],cur=0,idx=-1,isPlaying=false,rate=1,automix=true;
 let master,filterNode,echoDelay,echoFeedback,echoWet,flangerDelay,flangerWet,streamDest,analyser;
-let room=null,gateTimer=null,echoOn=false,flangerOn=false,fadeDur=6;
+let room=null,gateTimer=null,echoOn=false,flangerOn=false,fadeDur=5;
 const callsMap=new Map(),songsMap=new Map();
 
 function onYouTubeIframeAPIReady(){ytP=new YT.Player('yt-player',{videoId:'jfKfPfyJRdk'});}
@@ -173,31 +173,70 @@ const tAmx=()=>{automix=!automix;$('amx').textContent=`Auto: ${automix?'ON':'OFF
 
 $('f').onchange=e=>{
   [...e.target.files].forEach(f=>tracks.push({n:f.name.replace(/\.[^.]+$/,''),u:URL.createObjectURL(f)}));
-  rP();if(idx<0&&tracks.length>0)pT(0,0.5);
+  rP();if(idx<0&&tracks.length>0)playTrackIndex(0,0.5);
 };
 function rP(){
   const list=$('list');
   if(!tracks.length){list.innerHTML='<small style="color:var(--mu)">Aucune piste chargée...</small>';return;}
-  list.innerHTML=tracks.map((t,i)=>`<div class="t ${i===idx?'cur':''}" onclick="pT(${i},1)"><span>${i+1}. ${t.n}</span><span>${i===idx?'🔊 Playing':''}</span></div>`).join('');
+  list.innerHTML=tracks.map((t,i)=>`<div class="t ${i===idx?'cur':''}" onclick="playTrackIndex(${i},1)"><span>${i+1}. ${t.n}</span><span>${i===idx?'🔊 Playing':''}</span></div>`).join('');
 }
-function pT(i,fade=fadeDur){
-  if(!tracks[i])return;
-  if(ytP){ytP.pauseVideo();$('pp').textContent='▶ Play';isPlaying=false;}
-  initAudio();ctx.resume();
-  const nD=decks[1-cur],oD=decks[cur],now=ctx.currentTime,sf=Math.max(0.5,fade);
-  nD.el.src=tracks[i].u;nD.el.playbackRate=rate;nD.el.play().catch(()=>{});
-  nD.gain.gain.cancelScheduledValues(now);nD.gain.gain.setValueAtTime(0.001,now);nD.gain.gain.exponentialRampToValueAtTime(1,now+sf);
-  if(isPlaying&&oD.el.src){
-    oD.gain.gain.cancelScheduledValues(now);oD.gain.gain.setValueAtTime(oD.gain.gain.value||1,now);
-    oD.gain.gain.exponentialRampToValueAtTime(0.001,now+sf);setTimeout(()=>oD.el.pause(),sf*1000);
+
+// Pro Mixing Logic (Dual Decks Crossfade & Clean Stop)
+function playTrackIndex(i, fade = fadeDur) {
+  if (!tracks[i]) return;
+  if(ytP && typeof ytP.pauseVideo === 'function'){ try{ ytP.pauseVideo(); }catch(e){} }
+  initAudio(); ctx.resume();
+
+  const nextDeckIdx = 1 - cur;
+  const currentDeck = decks[cur];
+  const nextDeck = decks[nextDeckIdx];
+  const now = ctx.currentTime;
+  const sf = Math.max(0.5, fade);
+
+  // Load and start incoming track
+  nextDeck.el.src = tracks[i].u;
+  nextDeck.el.playbackRate = rate;
+  nextDeck.el.play().catch(()=>{});
+
+  // Fade in new deck
+  nextDeck.gain.gain.cancelScheduledValues(now);
+  nextDeck.gain.gain.setValueAtTime(0.001, now);
+  nextDeck.gain.gain.exponentialRampToValueAtTime(1, now + sf);
+
+  // Fade out old deck and stop it completely
+  if (isPlaying && currentDeck.el.src) {
+    currentDeck.gain.gain.cancelScheduledValues(now);
+    currentDeck.gain.gain.setValueAtTime(currentDeck.gain.gain.value || 1, now);
+    currentDeck.gain.gain.exponentialRampToValueAtTime(0.001, now + sf);
+    
+    let oldEl = currentDeck.el;
+    setTimeout(() => {
+      oldEl.pause();
+      oldEl.currentTime = 0;
+    }, sf * 1000);
   }
-  cur=1-cur;idx=i;isPlaying=true;rP();$('pp').textContent='⏸ Pause';
+
+  cur = nextDeckIdx;
+  idx = i;
+  isPlaying = true;
+  rP();
+  $('pp').textContent = '⏸ Pause';
 }
+
+function triggerMixNow() {
+  if (tracks.length < 2) return;
+  const nextIdx = (idx + 1) % tracks.length;
+  playTrackIndex(nextIdx, 3); // Smooth 3s manual mix
+}
+
 setInterval(()=>{
   if(!isPlaying||idx<0)return;const d=decks[cur].el;
   if(d.duration&&d.currentTime){
     $('bF').style.width=Math.min(100,(d.currentTime/d.duration)*100)+'%';
-    if(automix&&(d.duration-d.currentTime)<=fadeDur&&tracks.length>1)pT((idx+1)%tracks.length,fadeDur);
+    if(automix&&(d.duration-d.currentTime)<=fadeDur&&tracks.length>1){
+      const nextIdx = (idx + 1) % tracks.length;
+      playTrackIndex(nextIdx, fadeDur);
+    }
   }
 },500);
 
@@ -206,7 +245,6 @@ $('pp').onclick=()=>{
   if(isPlaying){d.pause();isPlaying=false;$('pp').textContent='▶ Play';}
   else{d.play();isPlaying=true;$('pp').textContent='⏸ Pause';}
 };
-$('next').onclick=()=>{if(tracks.length>1)pT((idx+1)%tracks.length,fadeDur);};
 $('xf').oninput=e=>{if(decks.length){const v=e.target.value/100;decks[0].gain.gain.value=1-v;decks[1].gain.gain.value=v;}};
 $('fl').oninput=e=>{initAudio();filterNode.frequency.value=200*Math.pow(100,e.target.value/100);};
 $('rt').oninput=e=>{rate=+e.target.value;$('rt').previousElementSibling.textContent=`Pitch: ${rate.toFixed(2)}x`;decks.forEach(d=>d.el.playbackRate=rate);};
@@ -222,7 +260,7 @@ $('live').onclick=async()=>{
     await api('/api/check',{},k);initAudio();await ctx.resume();
     const j=await api('/api/token',{role:'host',room:$('rm').value.trim()||'radio'},k);
     room=new LivekitClient.Room();await room.connect(j.url,j.token);
-    room.on(LivekitClient.RoomEvent.DataReceived,(payload, participant, kind, topic)=>{
+    room.on(LivekitClient.RoomEvent.DataReceived,(payload)=>{
       try{
         const str = new TextDecoder().decode(payload);
         const m = JSON.parse(str);
