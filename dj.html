@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>📻 Radio DJ - Ultimate Automix Pro</title>
+  <title>📻 Radio DJ - Complete Studio Pro</title>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/dist/livekit-client.umd.min.js"></script>
   <style>
     :root {
@@ -56,21 +56,25 @@
     #live.on { animation: pl 1.4s infinite; }
     @keyframes pl { 50% { opacity: .65; } }
 
-    /* Playlist */
-    #list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-    .t {
+    /* List & Calls */
+    #list, #calls, #songs { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+    .t, .item {
       padding: 10px 12px; background: rgba(0,0,0,.3); border-radius: 10px;
       border: 1px solid rgba(255,255,255,.05); display: flex; justify-content: space-between; align-items: center;
-      cursor: pointer;
     }
     .t.cur { border-color: var(--ac); color: var(--ac); font-weight: 600; }
+    .item { font-size: 14px; }
+    .actions { display: flex; gap: 6px; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-ac { background: #10b981; color: #fff; }
+    .btn-dc { background: #ef4444; color: #fff; }
     #bar { height: 6px; background: var(--bd); border-radius: 3px; margin-top: 14px; }
     #bar i { display: block; height: 100%; width: 0; background: var(--ac); border-radius: 3px; }
   </style>
 </head>
 <body>
 
-<h1>📻 Radio DJ - Ultimate Automix Pro</h1>
+<h1>📻 Radio DJ - Complete Studio Pro</h1>
 
 <!-- YouTube Deck -->
 <div class="c">
@@ -104,6 +108,18 @@
   <div class="s"><span>Filtre</span><input id="flt" type="range" min="0" max="100" value="100"></div>
 </div>
 
+<!-- Listener Call Queue -->
+<div class="c">
+  <h2>📞 Demandes d'Appel (LIVE)</h2>
+  <div id="calls"><small style="color:var(--mu)">Aucun appel en attente…</small></div>
+</div>
+
+<!-- Song Requests & Polls -->
+<div class="c">
+  <h2>🎵 Sondage & Demandes d'auditeurs</h2>
+  <div id="songs"><small style="color:var(--mu)">Pas de propositions pour le moment…</small></div>
+</div>
+
 <!-- LiveKit Broadcast -->
 <div class="c">
   <h2>🔐 LiveKit Broadcast</h2>
@@ -135,6 +151,8 @@ const $ = id => document.getElementById(id);
 let ctx, decks = [], tracks = [], cur = 0, idx = -1, isPlaying = false, rate = 1;
 let master, filt, streamDest, analyser;
 let room = null, automixEnabled = true, fadeDuration = 5;
+let callsMap = new Map();
+let songsMap = new Map();
 
 function initAudio() {
   if (ctx) return;
@@ -200,7 +218,7 @@ function renderPlaylist() {
   const list = $('list');
   if (!tracks.length) { list.innerHTML = '<small style="color:var(--mu)">Zid chi ghnaya bach tbda…</small>'; return; }
   list.innerHTML = tracks.map((t, i) => `
-    <div class="t ${i === idx ? 'cur' : ''}" onclick="playTrack(i, 0)">
+    <div class="t ${i === idx ? 'cur' : ''}" onclick="playTrack(${i}, 0)">
       <span>${i + 1}. ${t.name}</span>
     </div>
   `).join('');
@@ -261,7 +279,7 @@ $('pp').onclick = () => {
 $('next').onclick = () => {
   if (tracks.length < 2) return;
   const nextI = (idx + 1) % tracks.length;
-  playTrack(nextI, 2); // Quick mix
+  playTrack(nextI, 2);
 };
 
 // Mixer Controls
@@ -274,7 +292,7 @@ $('xf').oninput = e => {
 
 $('rate').oninput = e => {
   rate = +e.target.value;
-  $('rv').value = rate.toFixed(2) + 'x';
+  $('rv').textContent = rate.toFixed(2) + 'x';
   decks.forEach(d => { d.el.playbackRate = rate; });
 };
 
@@ -283,7 +301,7 @@ $('flt').oninput = e => {
   filt.frequency.value = 200 * Math.pow(100, e.target.value / 100);
 };
 
-// LiveKit Logic
+// LiveKit & Data Channels Logic
 async function api(path, body, key) {
   const r = await fetch(path, {
     method: 'POST', body: JSON.stringify({ ...(body || {}), key: key || '' }),
@@ -295,41 +313,108 @@ async function api(path, body, key) {
 }
 
 async function check() {
-  const key=$('key').value.trim();
-  if(!key){alert('Entrez le mot de passe DJ');return false;}
-  try{await api('/api/check',{},key); $('ls').textContent="✅ LiveKit Connecté"; return true;}
-  catch(e){$('ls').textContent="❌ Erreur: "+e.message;return false;}
+  const key = $('key').value.trim();
+  if (!key) { alert('Entrez le mot de passe DJ'); return false; }
+  try { await api('/api/check', {}, key); $('ls').textContent = "✅ LiveKit Connecté"; return true; }
+  catch(e) { $('ls').textContent = "❌ Erreur: " + e.message; return false; }
 }
 
-async function goLive(){
-  if(!await check())return;
-  const L=LivekitClient;
-  try{
-    const j=await api('/api/token',{role:'host',room:$('rm').value.trim()||'radio'},$('key').value.trim());
-    room=new L.Room();
-    await room.connect(j.url,j.token);
-    await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0],{name:'mix',forceStereo:true});
-    $('live').textContent="🔴 En Direct"; $('live').style.background="#ef4444";
-  }catch(e){alert("LiveKit Error: "+e.message);}
+async function goLive() {
+  if (!await check()) return;
+  const L = LivekitClient;
+  try {
+    const j = await api('/api/token', { role: 'host', room: $('rm').value.trim() || 'radio' }, $('key').value.trim());
+    room = new L.Room();
+    await room.connect(j.url, j.token);
+    room.on(L.RoomEvent.DataReceived, (payload, participant) => {
+      try {
+        const msg = JSON.parse(new TextDecoder().decode(payload));
+        if (msg.type === 'call_req') {
+          callsMap.set(msg.id, { name: msg.name, id: msg.id });
+          renderCalls();
+        } else if (msg.type === 'call_end' || msg.type === 'call_reject') {
+          callsMap.delete(msg.id);
+          renderCalls();
+        } else if (msg.type === 'new_song') {
+          songsMap.set(msg.id, { title: msg.title, id: msg.id, votes: 0 });
+          renderSongs();
+        } else if (msg.type === 'vote_song') {
+          const s = songsMap.get(msg.id);
+          if (s) { s.votes++; renderSongs(); }
+        }
+      } catch(e) {}
+    });
+
+    await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0], { name: 'mix', forceStereo: true });
+    $('live').textContent = "🔴 En Direct"; $('live').style.background = "#ef4444";
+  } catch(e) { alert("LiveKit Error: " + e.message); }
 }
 
-$('chk').onclick=check;
-$('live').onclick=()=>room?room.disconnect():goLive();
+function sendData(obj) {
+  if (room && room.state === 'connected') {
+    const data = new TextEncoder().encode(JSON.stringify(obj));
+    room.localParticipant.publishData(data, { reliable: true });
+  }
+}
+
+window.acceptCall = async (id) => {
+  const c = callsMap.get(id);
+  if (c) {
+    sendData({ type: 'call_accept', id: id });
+    callsMap.delete(id);
+    renderCalls();
+  }
+};
+
+window.kickCall = async (id) => {
+  sendData({ type: 'call_kick', id: id });
+  callsMap.delete(id);
+  renderCalls();
+};
+
+function renderCalls() {
+  const box = $('calls');
+  if (callsMap.size === 0) { box.innerHTML = '<small style="color:var(--mu)">Aucun appel en attente…</small>'; return; }
+  box.innerHTML = Array.from(callsMap.values()).map(c => `
+    <div class="item">
+      <span>${c.name}</span>
+      <div class="actions">
+        <button class="btn-sm btn-ac" onclick="acceptCall('${c.id}')">📞 Accepter</button>
+        <button class="btn-sm btn-dc" onclick="kickCall('${c.id}')">🚫 Rejeter</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderSongs() {
+  const box = $('songs');
+  if (songsMap.size === 0) { box.innerHTML = '<small style="color:var(--mu)">Pas de propositions pour le moment…</small>'; return; }
+  const sorted = Array.from(songsMap.values()).sort((a,b) => b.votes - a.votes);
+  box.innerHTML = sorted.map(s => `
+    <div class="item">
+      <div><strong>${s.title}</strong></div>
+      <div>⚡️ ${s.votes} votes</div>
+    </div>
+  `).join('');
+}
+
+$('chk').onclick = check;
+$('live').onclick = () => room ? room.disconnect() : goLive();
 
 // Visualizer Loop
-(function draw(){
+(function draw() {
   requestAnimationFrame(draw);
-  const c=$('vz'); if(!c)return;
-  const x=c.getContext('2d');
-  x.clearRect(0,0,c.width,c.height);
-  if(!analyser)return;
-  const d=new Uint8Array(analyser.frequencyBinCount);
+  const c = $('vz'); if (!c) return;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, c.width, c.height);
+  if (!analyser) return;
+  const d = new Uint8Array(analyser.frequencyBinCount);
   analyser.getByteFrequencyData(d);
-  const w=c.width/d.length;
-  x.fillStyle='#ff4d8d';
-  d.forEach((v,i)=>{
-    const h=v/255*c.height;
-    x.fillRect(i*w+1,c.height-h,w-2,h);
+  const w = c.width / d.length;
+  x.fillStyle = '#ff4d8d';
+  d.forEach((v, i) => {
+    const h = v / 255 * c.height;
+    x.fillRect(i * w + 1, c.height - h, w - 2, h);
   });
 })();
 </script>
