@@ -1,188 +1,32 @@
 <!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>📻 Radiomix Live</title>
+<title>📻 Radio</title>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/dist/livekit-client.umd.min.js"></script>
 <style>
-:root{--bg:#0b0716;--tx:#f3f0ff;--mu:#9d95c4;--ac:#ff4d8d;--ac2:#7c5cff;color-scheme:dark}
+:root{--bg:#0e0b1a;--tx:#f3f0ff;--mu:#9d95c4;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:16px;background:radial-gradient(circle at 50% 0%,#2e1660,#0b0716 70%) fixed;color:var(--tx);font:15px system-ui,sans-serif;padding:20px 16px 60px;overflow-x:hidden}
-h1{margin:0;font-size:28px;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;letter-spacing:1px}
-
-/* Animations & Visualizer */
-.hero{position:relative;display:flex;flex-direction:column;align-items:center;margin:10px 0}
-#ring{width:130px;height:130px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--ac),var(--ac2));font-size:50px;box-shadow:0 0 25px rgba(255,77,141,.3);transition:.3s;z-index:2}
-.on #ring{animation:pulse 1.5s infinite, spinGlow 6s linear infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,77,141,.6)}70%{box-shadow:0 0 0 28px rgba(255,77,141,0)}100%{box-shadow:0 0 0 0 rgba(255,77,141,0)}}
-@keyframes spinGlow{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
-
-.eq{display:flex;gap:5px;height:28px;align-items:flex-end;margin-top:12px;opacity:.25;transition:.3s}
-.on .eq{opacity:1}
-.eq span{width:5px;background:linear-gradient(to top,var(--ac2),var(--ac));border-radius:4px;height:6px}
-.on .eq span{animation:eqBar .8s ease-in-out infinite alternate}
-.eq span:nth-child(2){animation-delay:.15s}.eq span:nth-child(3){animation-delay:.3s}.eq span:nth-child(4){animation-delay:.1s}.eq span:nth-child(5){animation-delay:.4s}.eq span:nth-child(6){animation-delay:.2s}
-@keyframes eqBar{0%{height:5px}100%{height:28px}}
-
-#t{color:var(--mu);font-size:14px;min-height:20px;text-align:center}
-.btn-main{background:#fff;color:#1b1030;border:0;border-radius:40px;padding:13px 34px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.3);transition:.2s}
-.btn-main:active{transform:scale(.96)}
-
-/* Cards & Sections */
-.card{width:100%;max-width:440px;background:rgba(255,255,255,.05);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
-.card h3{margin:0;font-size:16px;display:flex;align-items:center;gap:8px;color:#fff}
-.row{display:flex;gap:8px}
-input{flex:1;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);color:#fff;padding:10px 12px;border-radius:10px;font-size:14px;outline:none}
-input:focus{border-color:var(--ac)}
-.btn-sm{background:linear-gradient(90deg,var(--ac),var(--ac2));color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;white-space:nowrap}
-.btn-call{background:#10b981;color:#fff;border:0;border-radius:12px;padding:12px;font-weight:700;cursor:pointer;width:100%;font-size:15px}
-.btn-call.wait{background:#f59e0b}
-.btn-call.live{background:#ef4444;animation:pulse 1.5s infinite}
-
-/* Poll List */
-#songs{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto}
-.song-item{display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.25);padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.05)}
-.song-info{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
-.song-title{font-weight:600;font-size:14px;color:#fff}
-.song-by{font-size:11px;color:var(--mu)}
-.vote-btn{background:rgba(255,77,141,.15);border:1px solid var(--ac);color:#fff;border-radius:20px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px}
-.vote-btn.voted{background:var(--ac);pointer-events:none}
-
-/* Floating Emojis */
-.reactions{display:flex;gap:10px; justify-content:center}
-.reac-btn{background:rgba(255,255,255,.08);border:0;font-size:20px;padding:8px 12px;border-radius:50%;cursor:pointer;transition:.2s}
-.reac-btn:active{transform:scale(1.3)}
-.floater{position:fixed;bottom:20px;font-size:28px;pointer-events:none;animation:floatUp 2.8s ease-out forwards;z-index:99}
-@keyframes floatUp{0%{transform:translateY(0) scale(.8);opacity:1}100%{transform:translateY(-75vh) scale(1.4);opacity:0}}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle at 20% 0,#2a1750,#0e0b1a 60%) fixed;color:var(--tx);font:16px system-ui,sans-serif;text-align:center;padding:24px}
+h1{margin:0;font-size:30px;background:linear-gradient(90deg,#ff4d8d,#7c5cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#ring{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ff4d8d,#7c5cff);font-size:56px;box-shadow:0 0 0 0 rgba(255,77,141,.5)}
+.on #ring{animation:p 1.6s infinite}@keyframes p{70%{box-shadow:0 0 0 30px rgba(255,77,141,0)}100%{box-shadow:0 0 0 0 rgba(255,77,141,0)}}
+button{background:#fff;color:#1b1030;border:0;border-radius:40px;padding:16px 38px;font-size:18px;font-weight:700}
+#t{color:var(--mu);min-height:22px;max-width:320px}
 </style></head><body>
-
-<h1>📻 RADIOMIX</h1>
-
-<div class="hero">
-  <div id="ring">🎧</div>
-  <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-</div>
-
+<h1>Radio</h1>
+<div id="ring">🎧</div>
 <div id="t">Dghet bach tsma3 l'DJ live</div>
-<button id="b" class="btn-main">▶ Écouter</button>
-<button id="snd" class="btn-main" style="display:none;background:linear-gradient(90deg,#ff4d8d,#7c5cff);color:#fff">🔊 Dghet bach tsm3</button>
-
-<!-- Reactions -->
-<div class="reactions">
-  <button class="reac-btn" onclick="sendReac('🔥')">🔥</button>
-  <button class="reac-btn" onclick="sendReac('❤️')">❤️</button>
-  <button class="reac-btn" onclick="sendReac('🎶')">🎶</button>
-  <button class="reac-btn" onclick="sendReac('👏')">👏</button>
-</div>
-
-<!-- Call Request Section -->
-<div class="card">
-  <h3>📞 Tle3 تهضر مع الدي جي (Live)</h3>
-  <input id="username" placeholder="Smiytk (ex: Yassine)..." maxlength="20">
-  <button id="callBtn" class="btn-call" onclick="toggleCallReq()">🎤 Demander l'appel</button>
-</div>
-
-<!-- Song Poll Section -->
-<div class="card">
-  <h3>🎵 9tare7 Disk & Sowet (Sondage)</h3>
-  <div class="row">
-    <input id="songInput" placeholder="Smiyat disk awla lien YouTube..." maxlength="80">
-    <button class="btn-sm" onclick="proposeSong()">+ Zid</button>
-  </div>
-  <div id="songs"><div style="color:var(--mu);font-size:13px;text-align:center">Mazal ma kayn ta 9tira7, koun nta lewel!</div></div>
-</div>
-
+<button id="b">▶ Écouter</button>
+<button id="snd" style="display:none;background:linear-gradient(90deg,#ff4d8d,#7c5cff);color:#fff">🔊 Dghet bach tsm3</button>
 <script>
 const $=id=>document.getElementById(id);
 const R=new URLSearchParams(location.search).get('r')||'radio';
-let room=null,el=null,callState='idle';
-let songsList=[]; // {id, title, by, votes}
-const votedIds=new Set();
-
+let room=null,el=null;
 const say=t=>$('t').textContent=t;
-
-function spawnEmoji(em){
-  const d=document.createElement('div');
-  d.className='floater';d.textContent=em;
-  d.style.left=(20+Math.random()*60)+'vw';
-  document.body.appendChild(d);
-  setTimeout(()=>d.remove(),2800);
-}
-
-function sendData(obj){
-  if(!room || room.state!=='connected')return alert('Khassk tkoun mconnecti (Écouter) be3da!');
-  const data=new TextEncoder().encode(JSON.stringify(obj));
-  room.localParticipant.publishData(data,{reliable:true});
-}
-
-function sendReac(em){
-  spawnEmoji(em);
-  if(room && room.state==='connected')sendData({type:'reac',em});
-}
-
-function renderSongs(){
-  const box=$('songs');
-  if(!songsList.length){box.innerHTML='<div style="color:var(--mu);font-size:13px;text-align:center">Mazal ma kayn ta 9tira7!</div>';return;}
-  songsList.sort((a,b)=>b.votes-a.votes);
-  box.innerHTML=songsList.map(s=>`
-    <div class="song-item">
-      <div class="song-info">
-        <div class="song-title">${s.title.replace(/</g,'&lt;')}</div>
-        <div class="song-by">Men: ${s.by.replace(/</g,'&lt;')}</div>
-      </div>
-      <button class="vote-btn ${votedIds.has(s.id)?'voted':''}" onclick="voteSong('${s.id}')">
-        👍 <span>${s.votes}</span>
-      </button>
-    </div>
-  `).join('');
-}
-
-function proposeSong(){
-  const title=$('songInput').value.trim();
-  const by=$('username').value.trim()||'Ami';
-  if(!title)return;
-  const song={id:Date.now().toString(36),title,by,votes:1};
-  votedIds.add(song.id);
-  songsList.push(song);
-  renderSongs();
-  sendData({type:'new_song',song});
-  $('songInput').value='';
-}
-
-window.voteSong=function(id){
-  if(votedIds.has(id))return;
-  votedIds.add(id);
-  const s=songsList.find(x=>x.id===id);
-  if(s){s.votes++;renderSongs();sendData({type:'vote_song',id});}
-};
-
-async function toggleCallReq(){
-  if(!room || room.state!=='connected')return alert('Dghet 3la Écouter be3da!');
-  const name=$('username').value.trim()||'Ami';
-  if(callState==='idle'){
-    callState='waiting';
-    $('callBtn').textContent='⏳ الطلب مشى... تسنى الدي جي يقبل';
-    $('callBtn').className='btn-call wait';
-    sendData({type:'call_req',name,id:room.localParticipant.identity});
-  }else if(callState==='live'){
-    await room.localParticipant.setMicrophoneEnabled(false);
-    callState='idle';
-    $('callBtn').textContent='🎤 Demander l\'appel';
-    $('callBtn').className='btn-call';
-    sendData({type:'call_end',id:room.localParticipant.identity});
-  }
-}
-
-function stop(m){
-  const r=room;room=null;if(r)r.disconnect();
-  if(el){el.pause();el.srcObject=null;el.remove();el=null}
-  document.body.classList.remove('on');
-  $('snd').style.display='none';$('b').textContent='▶ Écouter';
-  callState='idle';$('callBtn').textContent='🎤 Demander l\'appel';$('callBtn').className='btn-call';
-  say(m||'Wa9ef');
-}
-
+function stop(m){const r=room;room=null;if(r)r.disconnect();if(el){el.pause();el.srcObject=null;el.remove();el=null}document.body.classList.remove('on');$('snd').style.display='none';$('b').textContent='▶ Écouter';say(m||'Wa9ef')}
 async function listen(){
   const L=LivekitClient,E=L.RoomEvent;
+  // iOS: unlock audio playback inside the tap, before any await
   el=document.createElement('audio');el.setAttribute('playsinline','');el.autoplay=true;
   el.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
   document.body.appendChild(el);el.play().catch(()=>{});
@@ -191,46 +35,20 @@ async function listen(){
     const r=await fetch('/api/token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({role:'listener',room:R})});
     const j=await r.json();if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
     room=new L.Room();
-    
-    // Attach any audio track (DJ or accepted caller)
-    room.on(E.TrackSubscribed,(t,pub,p)=>{
-      if(t.kind!=='audio')return;
-      const a=document.createElement('audio');a.setAttribute('playsinline','');a.autoplay=true;
-      t.attach(a);document.body.appendChild(a);
-      a.play().then(()=>{$('snd').style.display='none'}).catch(()=>{$('snd').style.display=''});
-      if(p.identity==='dj'){document.body.classList.add('on');say('Kat sma3 l\'DJ live 🔴');}
-    });
-    
-    room.on(E.DataReceived,(payload)=>{
-      try{
-        const msg=JSON.parse(new TextDecoder().decode(payload));
-        if(msg.type==='reac')spawnEmoji(msg.em);
-        if(msg.type==='new_song'){if(!songsList.some(x=>x.id===msg.song.id)){songsList.push(msg.song);renderSongs();}}
-        if(msg.type==='vote_song'){const s=songsList.find(x=>x.id===msg.id);if(s){s.votes++;renderSongs();}}
-        if(msg.type==='sync_songs'){songsList=msg.songs;renderSongs();}
-        if(msg.type==='call_accept' && msg.id===room.localParticipant.identity){
-          room.localParticipant.setMicrophoneEnabled(true).then(()=>{
-            callState='live';
-            $('callBtn').textContent='🔴 نتا دابا فـ اللايف! (ورك باش تقطع)';
-            $('callBtn').className='btn-call live';
-          }).catch(e=>alert('3ti الصلاحية للميكرو: '+e.message));
-        }
-        if(msg.type==='call_kick' && msg.id===room.localParticipant.identity){
-          room.localParticipant.setMicrophoneEnabled(false);
-          callState='idle';
-          $('callBtn').textContent='🎤 Demander l\'appel';
-          $('callBtn').className='btn-call';
-        }
-      }catch(e){}
-    });
-
-    room.on(E.Disconnected,()=>{if(room)stop('Connexion t9te3at.')});
+    const djHere=()=>[...room.remoteParticipants.values()].some(p=>p.identity==='dj');
+    room.on(E.TrackSubscribed,t=>{if(t.kind!=='audio'||!el)return;el.removeAttribute('src');t.attach(el);
+      el.play().then(()=>{$('snd').style.display='none'}).catch(()=>{$('snd').style.display=''});
+      document.body.classList.add('on');say('Kat sma3 l\'DJ live 🔴')});
+    room.on(E.TrackUnsubscribed,t=>{t.detach(el);document.body.classList.remove('on');say(djHere()?'Kan jib l\'son…':'L\'DJ wa9ef, kan tsnna…')});
+    room.on(E.ParticipantConnected,p=>{if(p.identity==='dj')say('L\'DJ dkhel, kan jib l\'son…')});
+    room.on(E.ParticipantDisconnected,p=>{if(p.identity==='dj'){document.body.classList.remove('on');say('L\'DJ kharaj. Kan tsnna…')}});
+    room.on(E.AudioPlaybackStatusChanged,()=>{if(room&&!room.canPlayAudio)$('snd').style.display=''});
+    room.on(E.Disconnected,()=>{if(room)stop('Connexion t9te3at. 3awed dghet Écouter.')});
     await room.connect(j.url,j.token);
     $('b').textContent='⏹ Stop';
-    sendData({type:'ask_sync'});
-    say('Connecté ✓');
+    if(!document.body.classList.contains('on'))say(djHere()?'DJ live, kan jib l\'son…':'Connecté ✓ L\'DJ mazal ma dar Go Live, kan tsnna…');
   }catch(e){stop(e.message)}
 }
-$('snd').onclick=async()=>{try{await room.startAudio();$('snd').style.display='none'}catch(e){}};
+$('snd').onclick=async()=>{try{await room.startAudio();await el.play();$('snd').style.display='none'}catch(e){}};
 $('b').onclick=()=>room?stop():listen();
 </script></body></html>
