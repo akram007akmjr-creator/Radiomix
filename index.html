@@ -39,7 +39,7 @@ input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--bd);back
 
 <div id="live" style="display:none">
 <div class="card re" id="re"></div>
-<div class="card" id="ytc" style="display:none"><h2>🎬 YouTube (sync m3a l'DJ)</h2><div id="ytp"></div></div>
+<div class="card" id="ytc" style="display:none"><h2>🎬 YouTube (sync m3a l'DJ)</h2><div id="ytp"></div><button id="um" class="g" style="width:100%;margin-top:8px">🔊 Dghet bach tsma3 YouTube</button><small style="color:var(--mu)">Kayt'chghel b sot mkhfi (iPhone). Machi f l'radio.</small></div>
 <div class="card"><h2>📞 Appel</h2><input id="nm" placeholder="Smiytek" maxlength="20"><button id="cb" class="g" style="width:100%">📞 Talab appel m3a l'DJ</button></div>
 <div class="card"><h2>🗳 Talab ghnia</h2><input id="rq" placeholder="Smiyt l'ghnia" maxlength="80"><input id="rl" placeholder="Lien YouTube (optionnel)"><button id="rb" class="g" style="width:100%">Sift</button><div id="pl" style="margin-top:8px"></div></div>
 </div>
@@ -60,8 +60,8 @@ function pollUi(items){const L=$('pl');L.innerHTML=items.length?'':'<small style
     n.textContent=it.title+(it.link?' 🎬':'');b.textContent=it.votes+' 👍';b.disabled=!!voted[it.id];b.onclick=()=>{voted[it.id]=1;toDj({t:'vote',id:it.id});b.disabled=true;b.textContent=(it.votes+1)+' 👍'};d.append(n,b);L.appendChild(d)})}
 const ytLoad=()=>ytP||(ytP=new Promise(r=>{window.onYouTubeIframeAPIReady=r;const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)}));
 function ytSync(m){lastYt=m;if(!m.id){$('ytc').style.display='none';if(yl)try{yl.pauseVideo()}catch(e){}return}
-  $('ytc').style.display='';ytLoad().then(()=>{const t=(m.pos||0)+.5;
-    if(!yl){yl=new YT.Player('ytp',{width:'100%',height:'200',videoId:m.id,playerVars:{playsinline:1,start:Math.floor(t)},events:{onReady:e=>{if(lastYt&&lastYt.playing){e.target.seekTo((lastYt.pos||0)+.5,true);e.target.playVideo()}}}});return}
+  $('ytc').style.display='';$('um').style.display=(yl&&yl.isMuted&&!yl.isMuted())?'none':'';ytLoad().then(()=>{const t=(m.pos||0)+.5;
+    if(!yl){yl=new YT.Player('ytp',{width:'100%',height:'200',videoId:m.id,playerVars:{playsinline:1,mute:1,autoplay:1,start:Math.floor(t)},events:{onReady:e=>{e.target.mute();if(lastYt&&lastYt.playing){e.target.seekTo((lastYt.pos||0)+.5,true);e.target.playVideo()}}}});return}
     if(yl.getVideoData().video_id!==m.id){yl.loadVideoById(m.id,t);return}
     if(Math.abs(yl.getCurrentTime()-t)>3)yl.seekTo(t,true);m.playing?yl.playVideo():yl.pauseVideo()})}
 function micOff(){if(room)room.localParticipant.setMicrophoneEnabled(false).catch(()=>{});incall=false;$('cb').textContent='📞 Talab appel m3a l\'DJ';$('cb').disabled=false}
@@ -103,6 +103,7 @@ async function listen(){
   }catch(e){stop(e.message)}
 }
 $('snd').onclick=async()=>{try{await room.startAudio();await el.play();$('snd').style.display='none'}catch(e){}};
+$('um').onclick=()=>{if(yl){try{yl.unMute();yl.setVolume(100);yl.playVideo()}catch(e){}}$('um').style.display='none'};
 $('b').onclick=()=>room?stop():listen();
 $('nm').value=(()=>{try{return localStorage.getItem('nm')||''}catch(e){return''}})();
 $('cb').onclick=()=>{if(!room)return;if(incall){micOff();toDj({t:'hangup'});say('L\'appel salla.');return}

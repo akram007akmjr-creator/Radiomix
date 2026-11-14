@@ -49,6 +49,7 @@ input[type=range]{accent-color:#ff4d8d}
 
 <div class="c"><h2>🎙 Voix & appels</h2>
 <div class="row"><button id="mic">🎙 Parler: OFF</button></div>
+<div id="mtr" style="height:8px;background:var(--bd);border-radius:4px;margin-top:10px"><i style="display:block;height:100%;width:0;background:linear-gradient(90deg,#27d3c3,#ff4d8d);border-radius:4px"></i></div><small>📡 Li kaytsift l'sa7abek (musique + voix): ila t7errek l'bar, kaysm3ouk.</small>
 <div id="cl" style="margin-top:8px"></div>
 <small>Casque obligatoire (sinon echo). La musique baisse quand tu parles.</small></div>
 <div class="c"><h2>🗳 Sondage — demandes</h2>
@@ -57,7 +58,7 @@ input[type=range]{accent-color:#ff4d8d}
 <div class="c"><h2>▶ YouTube</h2>
 <div class="row"><input id="yu" placeholder="Lien YouTube" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)"><button id="yb" style="flex:0 0 64px">▶</button></div>
 <div id="ytw" style="margin-top:8px"><div id="yt"></div></div>
-<small>Tes amis voient la même vidéo en sync. Les effets du mix ne touchent pas YouTube.</small></div>
+<small>⚠ YouTube machi f l'radio: sa7abek khasshom ydghto ▶ f l'vidéo dyalhom bach ysm3ouha.</small></div>
 <div class="c"><h2>Voix / Instru</h2>
 <div class="row" id="modes"><button data-m="n" class="on">Normal</button><button data-m="k">Sans voix</button><button data-m="v">Voix seule</button></div>
 <small>Sans voix kaybqi l'bass o l'kick. Voix seule approximatif (machi IA).</small></div>
@@ -73,18 +74,18 @@ input[type=range]{accent-color:#ff4d8d}
 
 <script>
 const $=id=>document.getElementById(id);
-let ctx,decks=[],tracks=[],cur=0,idx=-1,auto=true,shuf=false,mode='n',rate=1,xf=6,master,filt,dW,rW,streamDest,an;
+let ctx,decks=[],tracks=[],cur=0,idx=-1,auto=true,shuf=false,mode='n',rate=1,xf=6,master,filt,dW,rW,streamDest,an,sendBus,an2;
 function init(){
   if(ctx)return;
   ctx=new (window.AudioContext||window.webkitAudioContext)();
   master=ctx.createGain();filt=ctx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=20000;
   master.connect(filt);an=ctx.createAnalyser();an.fftSize=128;filt.connect(an);
-  const dry=ctx.createGain();filt.connect(dry);dry.connect(ctx.destination);streamDest=ctx.createMediaStreamDestination();dry.connect(streamDest);
+  const dry=ctx.createGain();filt.connect(dry);dry.connect(ctx.destination);streamDest=ctx.createMediaStreamDestination();sendBus=ctx.createGain();sendBus.connect(streamDest);an2=ctx.createAnalyser();an2.fftSize=256;sendBus.connect(an2);dry.connect(sendBus);
   const dl=ctx.createDelay(1.5);dl.delayTime.value=.35;const fb=ctx.createGain();fb.gain.value=.45;
-  dW=ctx.createGain();dW.gain.value=0;filt.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(dW);dW.connect(ctx.destination);dW.connect(streamDest);
+  dW=ctx.createGain();dW.gain.value=0;filt.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(dW);dW.connect(ctx.destination);dW.connect(sendBus);
   const cv=ctx.createConvolver(),len=ctx.sampleRate*2.5,b=ctx.createBuffer(2,len,ctx.sampleRate);
   for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}
-  cv.buffer=b;rW=ctx.createGain();rW.gain.value=0;filt.connect(cv);cv.connect(rW);rW.connect(ctx.destination);rW.connect(streamDest);
+  cv.buffer=b;rW=ctx.createGain();rW.gain.value=0;filt.connect(cv);cv.connect(rW);rW.connect(ctx.destination);rW.connect(sendBus);
   for(let k=0;k<2;k++)decks.push(mk());
 }
 function mk(){
@@ -190,8 +191,13 @@ function pollUi(){
 function playReq(it){
   if(it.link){ytPlay(it.link);items=items.filter(x=>x.id!==it.id);return pollOut()}
   const q=it.title.toLowerCase(),i=tracks.findIndex(t=>{const n=t.name.toLowerCase();return n.includes(q)||q.includes(n)});
-  if(i<0)return say('Ma 3ndekch "'+it.title+'" f l\'playlist. Zidha b ➕.');
+  if(i<0){ytSearch(it);return}
   play(i,xf);items=items.filter(x=>x.id!==it.id);pollOut()
+}
+async function ytSearch(it){
+  say('🔎 Kan qelleb 3la YouTube: '+it.title);
+  try{const j=await api('/api/search',{q:it.title},$('key').value.trim());await ytPlay(j.id);items=items.filter(x=>x.id!==it.id);pollOut()}
+  catch(e){const a=document.createElement('a');a.href='https://www.youtube.com/results?search_query='+encodeURIComponent(it.title);a.target='_blank';a.textContent=' 🔎 Qelleb b yddk';a.style.color='#ff4d8d';$('ls').textContent='❌ '+e.message+' — ';$('ls').appendChild(a)}
 }
 function callsUi(){
   const L=$('cl');L.innerHTML='';const ids=Object.keys(calls);if(!ids.length){L.innerHTML='<small>Ma kayn 7ta talab appel</small>';return}
@@ -211,14 +217,14 @@ async function endCall(id){
 }
 function callerAudio(t){
   callerDown();const ms=new MediaStream([t.mediaStreamTrack]);const a=new Audio();a.srcObject=ms;a.muted=true;a.play().catch(()=>{});
-  const s=ctx.createMediaStreamSource(ms),g=ctx.createGain();s.connect(g);g.connect(streamDest);g.connect(ctx.destination);caller={s,g,a}
+  const s=ctx.createMediaStreamSource(ms),g=ctx.createGain();s.connect(g);g.connect(sendBus);g.connect(ctx.destination);caller={s,g,a}
 }
 function callerDown(){if(caller){try{caller.s.disconnect();caller.g.disconnect()}catch(e){}caller.a.srcObject=null;caller=null}}
 function duck(on){if(ctx)master.gain.setTargetAtTime(on?.3:1,ctx.currentTime,.1);if(yp)try{yp.setVolume(on?30:100)}catch(e){}send({t:'duck',on})}
 async function toggleMic(){
   init();await ctx.resume();
   if(!mic){try{mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){return say('Mic mamsmo7ch: '+e.message)}
-    micSrc=ctx.createMediaStreamSource(mic);micSrc.connect(streamDest);duck(true);$('mic').textContent='🎙 Parler: ON';$('mic').classList.add('on')}
+    micSrc=ctx.createMediaStreamSource(mic);micSrc.connect(sendBus);duck(true);$('mic').textContent='🎙 Parler: ON';$('mic').classList.add('on')}
   else{micSrc.disconnect();mic.getTracks().forEach(t=>t.stop());mic=null;duck(false);$('mic').textContent='🎙 Parler: OFF';$('mic').classList.remove('on')}
 }
 function djStart(){
@@ -234,21 +240,23 @@ function djStart(){
   room.on(E.TrackUnsubscribed,(t,pb,p)=>{if(p.identity!=='dj')callerDown()});
 }
 function djStop(){started=false;if(mic)toggleMic();callerDown();active=null;calls={};callsUi()}
-setInterval(()=>{if(!room||!an)return;const d=new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(d);
+setInterval(()=>{if(!room||!an2)return;const d=new Uint8Array(an2.frequencyBinCount);an2.getByteFrequencyData(d);
   send({t:'lvl',b:+((d[0]+d[1]+d[2]+d[3])/1020).toFixed(2),v:+(d.reduce((a,c)=>a+c,0)/d.length/255).toFixed(2)},undefined,false)},150);
 const ytLoad=()=>ytP||(ytP=new Promise(r=>{window.onYouTubeIframeAPIReady=r;const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)}));
 function ytSend(){if(!yp||!yp.getVideoData)return;const st=yp.getPlayerState(),vd=yp.getVideoData();
   ytCur=st===0?{t:'yt',id:null}:{t:'yt',id:vd.video_id||null,pos:yp.getCurrentTime(),playing:st===1};
   send(ytCur);if(st===1){npTitle=vd.title||'YouTube';send({t:'np',title:npTitle})}}
 async function ytPlay(link){
-  const id=ytId(link);if(!id)return say('Lien YouTube machi s7i7');await ytLoad();
+  const id=ytId(link);if(!id)return say('Lien YouTube machi s7i7');await ytLoad();say('▶ YouTube kaykhdem 3andek. Sa7abek khasshom ydghto ▶ 3and-hom (machi f l\'radio).');
   if(decks.length)decks.forEach(d=>d.el.pause());
   if(!yp)yp=new YT.Player('yt',{width:'100%',height:'200',videoId:id,playerVars:{playsinline:1,autoplay:1},events:{onReady:e=>e.target.playVideo(),onStateChange:ytSend}});
   else yp.loadVideoById(id);
+  setTimeout(()=>{if(yp&&yp.getPlayerState&&yp.getPlayerState()!==1)say('Dghet ▶ f l\'player dyal YouTube (iPad kayblokki l\'autoplay)')},3000);
 }
 setInterval(()=>{if(yp&&yp.getPlayerState&&yp.getPlayerState()===1)ytSend()},4000);
-$('mic').onclick=toggleMic;$('yb').onclick=()=>ytPlay($('yu').value);
+ytLoad();$('mic').onclick=toggleMic;$('yb').onclick=()=>ytPlay($('yu').value);
 $('thr').oninput=()=>{$('thv').textContent=$('thr').value;pollUi()};callsUi();pollUi();
 
+setInterval(()=>{if(!an2)return;const d=new Uint8Array(an2.frequencyBinCount);an2.getByteFrequencyData(d);$('mtr').firstChild.style.width=Math.min(100,d.reduce((a,c)=>a+c,0)/d.length/255*260)+'%'},100);
 (function draw(){requestAnimationFrame(draw);const c=$('vz'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);if(!an)return;const d=new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(d);const w=c.width/d.length,g=x.createLinearGradient(0,0,c.width,0);g.addColorStop(0,'#ff4d8d');g.addColorStop(1,'#7c5cff');x.fillStyle=g;d.forEach((v,i)=>{const h=v/255*c.height;x.fillRect(i*w+1,c.height-h,w-2,h)})})();
 </script></body></html>
