@@ -4,33 +4,85 @@
 <title>📻 Radio</title>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/dist/livekit-client.umd.min.js"></script>
 <style>
-:root{--bg:#0e0b1a;--tx:#f3f0ff;--mu:#9d95c4;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#0e0b1a;--tx:#f3f0ff;--mu:#9d95c4;--cd:#191430;--bd:#2e2750;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle at 20% 0,#2a1750,#0e0b1a 60%) fixed;color:var(--tx);font:16px system-ui,sans-serif;text-align:center;padding:24px}
-h1{margin:0;font-size:30px;background:linear-gradient(90deg,#ff4d8d,#7c5cff);-webkit-background-clip:text;background-clip:text;color:transparent}
-#ring{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ff4d8d,#7c5cff);font-size:56px;box-shadow:0 0 0 0 rgba(255,77,141,.5)}
-.on #ring{animation:p 1.6s infinite}@keyframes p{70%{box-shadow:0 0 0 30px rgba(255,77,141,0)}100%{box-shadow:0 0 0 0 rgba(255,77,141,0)}}
-button{background:#fff;color:#1b1030;border:0;border-radius:40px;padding:16px 38px;font-size:18px;font-weight:700}
-#t{color:var(--mu);min-height:22px;max-width:320px}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#2a1750,#0e0b1a 60%) fixed;color:var(--tx);font:16px system-ui,sans-serif;text-align:center;padding:20px;overflow-x:hidden}
+.orb{position:fixed;border-radius:50%;filter:blur(70px);z-index:-1;opacity:calc(.25 + var(--v,0)*.9);transition:opacity .2s;animation:dr 14s ease-in-out infinite alternate}
+.o1{width:260px;height:260px;background:#ff4d8d;top:-60px;left:-60px}.o2{width:300px;height:300px;background:#7c5cff;bottom:-80px;right:-80px;animation-delay:-5s}.o3{width:200px;height:200px;background:#27d3c3;top:40%;left:55%;animation-delay:-9s}
+@keyframes dr{to{transform:translate(40px,-60px) scale(1.25)}}
+h1{margin:6px 0 14px;font-size:30px;background:linear-gradient(90deg,#ff4d8d,#7c5cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#ring{width:130px;height:130px;margin:0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ff4d8d,#7c5cff);font-size:50px;transform:scale(calc(1 + var(--b,0)*.35));transition:transform .12s}
+.on #ring{box-shadow:0 0 40px rgba(255,77,141,.6)}
+.eq{display:flex;gap:4px;height:56px;align-items:flex-end;justify-content:center;margin:16px 0 6px}
+.eq i{width:8px;height:12%;background:linear-gradient(#ff4d8d,#7c5cff);border-radius:4px;transition:height .15s;animation:ib 1.1s ease-in-out infinite alternate}
+.on .eq i{animation:none}@keyframes ib{to{height:35%}}
+#np{font-weight:700;min-height:24px;animation:fi .6s}@keyframes fi{from{opacity:0;transform:translateY(8px)}}
+#t{color:var(--mu);min-height:22px;margin:4px auto 12px;max-width:340px}
+button{background:#fff;color:#1b1030;border:0;border-radius:40px;padding:14px 30px;font-size:17px;font-weight:700}
+button.g{background:linear-gradient(90deg,#ff4d8d,#7c5cff);color:#fff}button:disabled{opacity:.4}
+.card{background:var(--cd);border:1px solid var(--bd);border-radius:16px;padding:14px;margin:14px auto;max-width:420px;text-align:left;animation:fi .5s}
+.card h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:0 0 10px}
+.re{display:flex;gap:8px;justify-content:center}.re button{background:var(--bd);color:#fff;font-size:26px;padding:8px 14px;border-radius:14px}.re button:active{transform:scale(1.3)}
+input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--bd);background:#120e24;color:var(--tx);margin-bottom:8px;font-size:16px}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bd);animation:fi .4s}
+.it button{padding:6px 12px;font-size:15px;background:var(--bd);color:#fff}
+.fl{position:fixed;bottom:90px;font-size:34px;pointer-events:none;animation:up 2.6s ease-out forwards}
+@keyframes up{to{transform:translateY(-62vh) rotate(18deg);opacity:0}}
 </style></head><body>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
 <h1>Radio</h1>
 <div id="ring">🎧</div>
+<div class="eq" id="eq"></div>
+<div id="np"></div>
 <div id="t">Dghet bach tsma3 l'DJ live</div>
-<button id="b">▶ Écouter</button>
-<button id="snd" style="display:none;background:linear-gradient(90deg,#ff4d8d,#7c5cff);color:#fff">🔊 Dghet bach tsm3</button>
+<button id="b" class="g">▶ Écouter</button> <button id="snd" style="display:none">🔊 Dghet bach tsm3</button>
+
+<div id="live" style="display:none">
+<div class="card re" id="re"></div>
+<div class="card" id="ytc" style="display:none"><h2>🎬 YouTube (sync m3a l'DJ)</h2><div id="ytp"></div></div>
+<div class="card"><h2>📞 Appel</h2><input id="nm" placeholder="Smiytek" maxlength="20"><button id="cb" class="g" style="width:100%">📞 Talab appel m3a l'DJ</button></div>
+<div class="card"><h2>🗳 Talab ghnia</h2><input id="rq" placeholder="Smiyt l'ghnia" maxlength="80"><input id="rl" placeholder="Lien YouTube (optionnel)"><button id="rb" class="g" style="width:100%">Sift</button><div id="pl" style="margin-top:8px"></div></div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const R=new URLSearchParams(location.search).get('r')||'radio';
-let room=null,el=null;
+const enc=new TextEncoder(),dec=new TextDecoder();
+let room=null,el=null,voted={},incall=false,yl=null,ytP=null,lastYt=null,lastRe=0;
 const say=t=>$('t').textContent=t;
-function stop(m){const r=room;room=null;if(r)r.disconnect();if(el){el.pause();el.srcObject=null;el.remove();el=null}document.body.classList.remove('on');$('snd').style.display='none';$('b').textContent='▶ Écouter';say(m||'Wa9ef')}
+const bars=[...Array(18)].map((_,i)=>{const b=document.createElement('i');b.style.animationDelay=(i*.07)+'s';$('eq').appendChild(b);return b});
+['❤️','🔥','👏','😂','🎉'].forEach(e=>{const b=document.createElement('button');b.textContent=e;b.onclick=()=>{if(!room||Date.now()-lastRe<400)return;lastRe=Date.now();send({t:'react',e});float(e)};$('re').appendChild(b)});
+function send(o,to,rel=true){if(!room)return;try{room.localParticipant.publishData(enc.encode(JSON.stringify(o)),{reliable:rel,destinationIdentities:to})}catch(e){}}
+const toDj=o=>send(o,['dj']);
+function float(e){const s=document.createElement('span');s.className='fl';s.textContent=e;s.style.left=(8+Math.random()*80)+'%';s.onanimationend=()=>s.remove();document.body.appendChild(s)}
+function lvl(b,v){const r=document.documentElement.style;r.setProperty('--b',b);r.setProperty('--v',v);bars.forEach((x,i)=>x.style.height=(10+v*100*(.4+.6*Math.random())*(1-i/40))+'%')}
+function pollUi(items){const L=$('pl');L.innerHTML=items.length?'':'<small style="color:var(--mu)">Ma kayn 7ta talab</small>';
+  items.forEach(it=>{const d=document.createElement('div');d.className='it';const n=document.createElement('span'),b=document.createElement('button');
+    n.textContent=it.title+(it.link?' 🎬':'');b.textContent=it.votes+' 👍';b.disabled=!!voted[it.id];b.onclick=()=>{voted[it.id]=1;toDj({t:'vote',id:it.id});b.disabled=true;b.textContent=(it.votes+1)+' 👍'};d.append(n,b);L.appendChild(d)})}
+const ytLoad=()=>ytP||(ytP=new Promise(r=>{window.onYouTubeIframeAPIReady=r;const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)}));
+function ytSync(m){lastYt=m;if(!m.id){$('ytc').style.display='none';if(yl)try{yl.pauseVideo()}catch(e){}return}
+  $('ytc').style.display='';ytLoad().then(()=>{const t=(m.pos||0)+.5;
+    if(!yl){yl=new YT.Player('ytp',{width:'100%',height:'200',videoId:m.id,playerVars:{playsinline:1,start:Math.floor(t)},events:{onReady:e=>{if(lastYt&&lastYt.playing){e.target.seekTo((lastYt.pos||0)+.5,true);e.target.playVideo()}}}});return}
+    if(yl.getVideoData().video_id!==m.id){yl.loadVideoById(m.id,t);return}
+    if(Math.abs(yl.getCurrentTime()-t)>3)yl.seekTo(t,true);m.playing?yl.playVideo():yl.pauseVideo()})}
+function micOff(){if(room)room.localParticipant.setMicrophoneEnabled(false).catch(()=>{});incall=false;$('cb').textContent='📞 Talab appel m3a l\'DJ';$('cb').disabled=false}
+function onData(pl,p){let m;try{m=JSON.parse(dec.decode(pl))}catch(e){return}
+  if(m.t==='react'){if(['❤️','🔥','👏','😂','🎉'].includes(m.e))float(m.e);return}
+  if(!p||p.identity!=='dj')return;
+  if(m.t==='lvl')lvl(m.b||0,m.v||0);
+  else if(m.t==='np'){$('np').textContent='🎵 '+String(m.title||'').slice(0,90);$('np').style.animation='none';void $('np').offsetWidth;$('np').style.animation=''}
+  else if(m.t==='poll')pollUi(m.items||[]);
+  else if(m.t==='yt')ytSync(m);
+  else if(m.t==='duck'&&yl)try{yl.setVolume(m.on?30:100)}catch(e){}
+  else if(m.t==='accepted'){say('✅ L\'DJ qbel. Kan 7ell l\'mic…');setTimeout(async()=>{try{await room.localParticipant.setMicrophoneEnabled(true);incall=true;$('cb').textContent='⏹ Salli l\'appel';$('cb').disabled=false;say('🎙 Nta f l\'appel (casque mfid)')}catch(e){say('Mic: '+e.message);micOff()}},800)}
+  else if(m.t==='declined'){say('L\'DJ ma qbelch daba.');micOff()}
+  else if(m.t==='ended'){say('L\'appel salla.');micOff()}}
+function stop(m){const r=room;room=null;if(r)r.disconnect();if(el){el.pause();el.srcObject=null;el.remove();el=null}
+  document.body.classList.remove('on');$('snd').style.display='none';$('live').style.display='none';lvl(0,0);incall=false;$('b').textContent='▶ Écouter';say(m||'Wa9ef')}
 async function listen(){
   const L=LivekitClient,E=L.RoomEvent;
-  // iOS: unlock audio playback inside the tap, before any await
   el=document.createElement('audio');el.setAttribute('playsinline','');el.autoplay=true;
   el.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
-  document.body.appendChild(el);el.play().catch(()=>{});
-  say('Kan connecti…');
+  document.body.appendChild(el);el.play().catch(()=>{});say('Kan connecti…');
   try{
     const r=await fetch('/api/token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({role:'listener',room:R})});
     const j=await r.json();if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
@@ -39,16 +91,22 @@ async function listen(){
     room.on(E.TrackSubscribed,t=>{if(t.kind!=='audio'||!el)return;el.removeAttribute('src');t.attach(el);
       el.play().then(()=>{$('snd').style.display='none'}).catch(()=>{$('snd').style.display=''});
       document.body.classList.add('on');say('Kat sma3 l\'DJ live 🔴')});
-    room.on(E.TrackUnsubscribed,t=>{t.detach(el);document.body.classList.remove('on');say(djHere()?'Kan jib l\'son…':'L\'DJ wa9ef, kan tsnna…')});
+    room.on(E.TrackUnsubscribed,t=>{if(el)t.detach(el);document.body.classList.remove('on');say(djHere()?'Kan jib l\'son…':'L\'DJ wa9ef, kan tsnna…')});
     room.on(E.ParticipantConnected,p=>{if(p.identity==='dj')say('L\'DJ dkhel, kan jib l\'son…')});
-    room.on(E.ParticipantDisconnected,p=>{if(p.identity==='dj'){document.body.classList.remove('on');say('L\'DJ kharaj. Kan tsnna…')}});
+    room.on(E.ParticipantDisconnected,p=>{if(p.identity==='dj'){document.body.classList.remove('on');lvl(0,0);say('L\'DJ kharaj. Kan tsnna…')}});
+    room.on(E.DataReceived,onData);
     room.on(E.AudioPlaybackStatusChanged,()=>{if(room&&!room.canPlayAudio)$('snd').style.display=''});
     room.on(E.Disconnected,()=>{if(room)stop('Connexion t9te3at. 3awed dghet Écouter.')});
     await room.connect(j.url,j.token);
-    $('b').textContent='⏹ Stop';
+    $('b').textContent='⏹ Stop';$('live').style.display='';
     if(!document.body.classList.contains('on'))say(djHere()?'DJ live, kan jib l\'son…':'Connecté ✓ L\'DJ mazal ma dar Go Live, kan tsnna…');
   }catch(e){stop(e.message)}
 }
 $('snd').onclick=async()=>{try{await room.startAudio();await el.play();$('snd').style.display='none'}catch(e){}};
 $('b').onclick=()=>room?stop():listen();
+$('nm').value=(()=>{try{return localStorage.getItem('nm')||''}catch(e){return''}})();
+$('cb').onclick=()=>{if(!room)return;if(incall){micOff();toDj({t:'hangup'});say('L\'appel salla.');return}
+  const name=$('nm').value.trim()||'Sa7ab';try{localStorage.setItem('nm',name)}catch(e){}
+  toDj({t:'call',name});$('cb').textContent='⏳ Kan tsnna l\'DJ…';say('Talab l\'appel tsift')};
+$('rb').onclick=()=>{const title=$('rq').value.trim();if(!room||!title)return;toDj({t:'req',title,link:$('rl').value.trim()});$('rq').value='';$('rl').value='';say('Talab dyalek tsift l\'DJ 👍')};
 </script></body></html>
