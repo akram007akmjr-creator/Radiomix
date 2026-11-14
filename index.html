@@ -47,6 +47,7 @@ input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--bd);back
 const $=id=>document.getElementById(id);
 const R=new URLSearchParams(location.search).get('r')||'radio';
 const enc=new TextEncoder(),dec=new TextDecoder();
+let want='mix',switching=false,micTrack=null;
 let room=null,el=null,voted={},incall=false,yl=null,ytP=null,lastYt=null,lastRe=0;
 const say=t=>$('t').textContent=t;
 const bars=[...Array(18)].map((_,i)=>{const b=document.createElement('i');b.style.animationDelay=(i*.07)+'s';$('eq').appendChild(b);return b});
@@ -64,7 +65,15 @@ function ytSync(m){lastYt=m;if(!m.id){$('ytc').style.display='none';if(yl)try{yl
     if(!yl){yl=new YT.Player('ytp',{width:'100%',height:'200',videoId:m.id,playerVars:{playsinline:1,mute:1,autoplay:1,start:Math.floor(t)},events:{onReady:e=>{e.target.mute();if(lastYt&&lastYt.playing){e.target.seekTo((lastYt.pos||0)+.5,true);e.target.playVideo()}}}});return}
     if(yl.getVideoData().video_id!==m.id){yl.loadVideoById(m.id,t);return}
     if(Math.abs(yl.getCurrentTime()-t)>3)yl.seekTo(t,true);m.playing?yl.playVideo():yl.pauseVideo()})}
-function micOff(){if(room)room.localParticipant.setMicrophoneEnabled(false).catch(()=>{});incall=false;$('cb').textContent='📞 Talab appel m3a l\'DJ';$('cb').disabled=false}
+function sub(){if(!room)return;room.remoteParticipants.forEach(p=>{if(p.identity!=='dj')return;p.trackPublications.forEach(pb=>{if(pb.kind==='audio'){const w=pb.trackName===want;if(w!==pb.isSubscribed)pb.setSubscribed(w)}})})}
+function swap(w){want=w;switching=true;sub();setTimeout(()=>switching=false,1500)}
+function micOff(){if(room&&micTrack){try{room.localParticipant.unpublishTrack(micTrack)}catch(e){}}if(micTrack){micTrack.stop();micTrack=null}
+  incall=false;swap('mix');$('cb').textContent='📞 Talab appel m3a l\'DJ';$('cb').disabled=false}
+async function goMic(){
+  for(let i=0;i<6;i++){try{await room.localParticipant.publishTrack(micTrack,{name:'mic'});incall=true;swap('nocall');
+    $('cb').textContent='⏹ Salli l\'appel';$('cb').disabled=false;say('🎙 Nta f l\'appel: l\'DJ kaysm3ek (casque mfid)');return}
+  catch(e){await new Promise(r=>setTimeout(r,600))}}
+  say('Ma9dertch nfta7 l\'mic');micOff()}
 function onData(pl,p){let m;try{m=JSON.parse(dec.decode(pl))}catch(e){return}
   if(m.t==='react'){if(['❤️','🔥','👏','😂','🎉'].includes(m.e))float(m.e);return}
   if(!p||p.identity!=='dj')return;
@@ -73,11 +82,11 @@ function onData(pl,p){let m;try{m=JSON.parse(dec.decode(pl))}catch(e){return}
   else if(m.t==='poll')pollUi(m.items||[]);
   else if(m.t==='yt')ytSync(m);
   else if(m.t==='duck'&&yl)try{yl.setVolume(m.on?30:100)}catch(e){}
-  else if(m.t==='accepted'){say('✅ L\'DJ qbel. Kan 7ell l\'mic…');setTimeout(async()=>{try{await room.localParticipant.setMicrophoneEnabled(true);incall=true;$('cb').textContent='⏹ Salli l\'appel';$('cb').disabled=false;say('🎙 Nta f l\'appel (casque mfid)')}catch(e){say('Mic: '+e.message);micOff()}},800)}
+  else if(m.t==='accepted'){say('✅ L\'DJ qbel. Kan 7ell l\'mic…');goMic()}
   else if(m.t==='declined'){say('L\'DJ ma qbelch daba.');micOff()}
   else if(m.t==='ended'){say('L\'appel salla.');micOff()}}
 function stop(m){const r=room;room=null;if(r)r.disconnect();if(el){el.pause();el.srcObject=null;el.remove();el=null}
-  document.body.classList.remove('on');$('snd').style.display='none';$('live').style.display='none';lvl(0,0);incall=false;$('b').textContent='▶ Écouter';say(m||'Wa9ef')}
+  document.body.classList.remove('on');$('snd').style.display='none';$('live').style.display='none';lvl(0,0);incall=false;if(micTrack){micTrack.stop();micTrack=null}want='mix';$('b').textContent='▶ Écouter';say(m||'Wa9ef')}
 async function listen(){
   const L=LivekitClient,E=L.RoomEvent;
   el=document.createElement('audio');el.setAttribute('playsinline','');el.autoplay=true;
@@ -91,13 +100,14 @@ async function listen(){
     room.on(E.TrackSubscribed,t=>{if(t.kind!=='audio'||!el)return;el.removeAttribute('src');t.attach(el);
       el.play().then(()=>{$('snd').style.display='none'}).catch(()=>{$('snd').style.display=''});
       document.body.classList.add('on');say('Kat sma3 l\'DJ live 🔴')});
-    room.on(E.TrackUnsubscribed,t=>{if(el)t.detach(el);document.body.classList.remove('on');say(djHere()?'Kan jib l\'son…':'L\'DJ wa9ef, kan tsnna…')});
+    room.on(E.TrackPublished,(pb,p)=>{if(p.identity==='dj')sub()});
+    room.on(E.TrackUnsubscribed,t=>{if(el)t.detach(el);if(switching)return;document.body.classList.remove('on');say(djHere()?'Kan jib l\'son…':'L\'DJ wa9ef, kan tsnna…')});
     room.on(E.ParticipantConnected,p=>{if(p.identity==='dj')say('L\'DJ dkhel, kan jib l\'son…')});
     room.on(E.ParticipantDisconnected,p=>{if(p.identity==='dj'){document.body.classList.remove('on');lvl(0,0);say('L\'DJ kharaj. Kan tsnna…')}});
     room.on(E.DataReceived,onData);
     room.on(E.AudioPlaybackStatusChanged,()=>{if(room&&!room.canPlayAudio)$('snd').style.display=''});
     room.on(E.Disconnected,()=>{if(room)stop('Connexion t9te3at. 3awed dghet Écouter.')});
-    await room.connect(j.url,j.token);
+    await room.connect(j.url,j.token,{autoSubscribe:false});sub();
     $('b').textContent='⏹ Stop';$('live').style.display='';
     if(!document.body.classList.contains('on'))say(djHere()?'DJ live, kan jib l\'son…':'Connecté ✓ L\'DJ mazal ma dar Go Live, kan tsnna…');
   }catch(e){stop(e.message)}
@@ -106,7 +116,9 @@ $('snd').onclick=async()=>{try{await room.startAudio();await el.play();$('snd').
 $('um').onclick=()=>{if(yl){try{yl.unMute();yl.setVolume(100);yl.playVideo()}catch(e){}}$('um').style.display='none'};
 $('b').onclick=()=>room?stop():listen();
 $('nm').value=(()=>{try{return localStorage.getItem('nm')||''}catch(e){return''}})();
-$('cb').onclick=()=>{if(!room)return;if(incall){micOff();toDj({t:'hangup'});say('L\'appel salla.');return}
+$('cb').onclick=async()=>{if(!room)return;if(incall){micOff();toDj({t:'hangup'});say('L\'appel salla.');return}
+  try{const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});micTrack=st.getAudioTracks()[0]}
+  catch(e){return say('Mic mamsmo7ch: '+e.message+' (7ell l\'idn dyal l\'mic f Safari)')}
   const name=$('nm').value.trim()||'Sa7ab';try{localStorage.setItem('nm',name)}catch(e){}
   toDj({t:'call',name});$('cb').textContent='⏳ Kan tsnna l\'DJ…';say('Talab l\'appel tsift')};
 $('rb').onclick=()=>{const title=$('rq').value.trim();if(!room||!title)return;toDj({t:'req',title,link:$('rl').value.trim()});$('rq').value='';$('rl').value='';say('Talab dyalek tsift l\'DJ 👍')};

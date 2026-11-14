@@ -58,7 +58,8 @@ input[type=range]{accent-color:#ff4d8d}
 <div class="c"><h2>▶ YouTube</h2>
 <div class="row"><input id="yu" placeholder="Lien YouTube" style="padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)"><button id="yb" style="flex:0 0 64px">▶</button></div>
 <div id="ytw" style="margin-top:8px"><div id="yt"></div></div>
-<small>⚠ YouTube machi f l'radio: sa7abek khasshom ydghto ▶ f l'vidéo dyalhom bach ysm3ouha.</small></div>
+<button id="tb" style="width:100%;margin-top:8px">🖥 Audio d'un onglet → radio (PC)</button>
+<small>PC (Chrome/Edge): fte7 YouTube f onglet akhor, dghet had zorr, khtar l'onglet o 7ett ✔ audio: sa7abek ysm3ouh f l'radio. Fl'iPad ma kaynach: sa7abek kaydghto ▶ 3and-hom.</small></div>
 <div class="c"><h2>Voix / Instru</h2>
 <div class="row" id="modes"><button data-m="n" class="on">Normal</button><button data-m="k">Sans voix</button><button data-m="v">Voix seule</button></div>
 <small>Sans voix kaybqi l'bass o l'kick. Voix seule approximatif (machi IA).</small></div>
@@ -74,18 +75,18 @@ input[type=range]{accent-color:#ff4d8d}
 
 <script>
 const $=id=>document.getElementById(id);
-let ctx,decks=[],tracks=[],cur=0,idx=-1,auto=true,shuf=false,mode='n',rate=1,xf=6,master,filt,dW,rW,streamDest,an,sendBus,an2;
+let ctx,decks=[],tracks=[],cur=0,idx=-1,auto=true,shuf=false,mode='n',rate=1,xf=6,master,filt,dW,rW,streamDest,an,sendBus,an2,dest2,sendBus2;
 function init(){
   if(ctx)return;
   ctx=new (window.AudioContext||window.webkitAudioContext)();
   master=ctx.createGain();filt=ctx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=20000;
   master.connect(filt);an=ctx.createAnalyser();an.fftSize=128;filt.connect(an);
-  const dry=ctx.createGain();filt.connect(dry);dry.connect(ctx.destination);streamDest=ctx.createMediaStreamDestination();sendBus=ctx.createGain();sendBus.connect(streamDest);an2=ctx.createAnalyser();an2.fftSize=256;sendBus.connect(an2);dry.connect(sendBus);
+  const dry=ctx.createGain();filt.connect(dry);dry.connect(ctx.destination);streamDest=ctx.createMediaStreamDestination();sendBus=ctx.createGain();sendBus.connect(streamDest);an2=ctx.createAnalyser();an2.fftSize=256;sendBus.connect(an2);dest2=ctx.createMediaStreamDestination();sendBus2=ctx.createGain();sendBus2.connect(dest2);dry.connect(sendBus);dry.connect(sendBus2);
   const dl=ctx.createDelay(1.5);dl.delayTime.value=.35;const fb=ctx.createGain();fb.gain.value=.45;
-  dW=ctx.createGain();dW.gain.value=0;filt.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(dW);dW.connect(ctx.destination);dW.connect(sendBus);
+  dW=ctx.createGain();dW.gain.value=0;filt.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(dW);dW.connect(ctx.destination);dW.connect(sendBus);dW.connect(sendBus2);
   const cv=ctx.createConvolver(),len=ctx.sampleRate*2.5,b=ctx.createBuffer(2,len,ctx.sampleRate);
   for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}
-  cv.buffer=b;rW=ctx.createGain();rW.gain.value=0;filt.connect(cv);cv.connect(rW);rW.connect(ctx.destination);rW.connect(sendBus);
+  cv.buffer=b;rW=ctx.createGain();rW.gain.value=0;filt.connect(cv);cv.connect(rW);rW.connect(ctx.destination);rW.connect(sendBus);rW.connect(sendBus2);
   for(let k=0;k<2;k++)decks.push(mk());
 }
 function mk(){
@@ -165,7 +166,7 @@ async function goLive(){
     room.on(L.RoomEvent.ParticipantConnected,upd).on(L.RoomEvent.ParticipantDisconnected,upd);
     room.on(L.RoomEvent.Disconnected,()=>{room=null;ui(false);djStop();if(wl){wl.release().catch(()=>{});wl=null}});
     await room.connect(j.url,j.token);
-    await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0],{name:'mix',audioPreset:{maxBitrate:128000},dtx:false,red:false,forceStereo:true});
+    await room.localParticipant.publishTrack(streamDest.stream.getAudioTracks()[0],{name:'mix',audioPreset:{maxBitrate:128000},dtx:false,red:false,forceStereo:true});await room.localParticipant.publishTrack(dest2.stream.getAudioTracks()[0],{name:'nocall',audioPreset:{maxBitrate:96000},dtx:false,red:false,forceStereo:true});
     ui(true);upd();djStart();
     try{wl=await navigator.wakeLock.request('screen')}catch(e){}
   }catch(e){say('Error: '+e.message);if(room){const r=room;room=null;r.disconnect()}}
@@ -220,11 +221,11 @@ function callerAudio(t){
   const s=ctx.createMediaStreamSource(ms),g=ctx.createGain();s.connect(g);g.connect(sendBus);g.connect(ctx.destination);caller={s,g,a}
 }
 function callerDown(){if(caller){try{caller.s.disconnect();caller.g.disconnect()}catch(e){}caller.a.srcObject=null;caller=null}}
-function duck(on){if(ctx)master.gain.setTargetAtTime(on?.3:1,ctx.currentTime,.1);if(yp)try{yp.setVolume(on?30:100)}catch(e){}send({t:'duck',on})}
+function duck(on){if(ctx)master.gain.setTargetAtTime(on?.3:1,ctx.currentTime,.1);if(tab)tab.g.gain.setTargetAtTime(on?.3:1,ctx.currentTime,.1);if(yp)try{yp.setVolume(on?30:100)}catch(e){}send({t:'duck',on})}
 async function toggleMic(){
   init();await ctx.resume();
   if(!mic){try{mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){return say('Mic mamsmo7ch: '+e.message)}
-    micSrc=ctx.createMediaStreamSource(mic);micSrc.connect(sendBus);duck(true);$('mic').textContent='🎙 Parler: ON';$('mic').classList.add('on')}
+    micSrc=ctx.createMediaStreamSource(mic);micSrc.connect(sendBus);micSrc.connect(sendBus2);duck(true);$('mic').textContent='🎙 Parler: ON';$('mic').classList.add('on')}
   else{micSrc.disconnect();mic.getTracks().forEach(t=>t.stop());mic=null;duck(false);$('mic').textContent='🎙 Parler: OFF';$('mic').classList.remove('on')}
 }
 function djStart(){
@@ -236,14 +237,14 @@ function djStart(){
     else if(m.t==='hangup'&&active===id)endCall(id)});
   room.on(E.ParticipantConnected,p=>{send({t:'poll',items:pubItems()},[p.identity]);if(npTitle)send({t:'np',title:npTitle},[p.identity]);if(ytCur)send(ytCur,[p.identity])});
   room.on(E.ParticipantDisconnected,p=>{delete calls[p.identity];if(active===p.identity){active=null;callerDown()}callsUi()});
-  room.on(E.TrackSubscribed,(t,pb,p)=>{if(t.kind==='audio'&&p.identity!=='dj')callerAudio(t)});
+  room.on(E.TrackSubscribed,(t,pb,p)=>{if(t.kind==='audio'&&p.identity!=='dj'){callerAudio(t);say('🎙 Kan sm3o '+(calls[p.identity]||'sa7bek'))}});
   room.on(E.TrackUnsubscribed,(t,pb,p)=>{if(p.identity!=='dj')callerDown()});
 }
 function djStop(){started=false;if(mic)toggleMic();callerDown();active=null;calls={};callsUi()}
 setInterval(()=>{if(!room||!an2)return;const d=new Uint8Array(an2.frequencyBinCount);an2.getByteFrequencyData(d);
   send({t:'lvl',b:+((d[0]+d[1]+d[2]+d[3])/1020).toFixed(2),v:+(d.reduce((a,c)=>a+c,0)/d.length/255).toFixed(2)},undefined,false)},150);
 const ytLoad=()=>ytP||(ytP=new Promise(r=>{window.onYouTubeIframeAPIReady=r;const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)}));
-function ytSend(){if(!yp||!yp.getVideoData)return;const st=yp.getPlayerState(),vd=yp.getVideoData();
+function ytSend(){if(tab||!yp||!yp.getVideoData)return;const st=yp.getPlayerState(),vd=yp.getVideoData();
   ytCur=st===0?{t:'yt',id:null}:{t:'yt',id:vd.video_id||null,pos:yp.getCurrentTime(),playing:st===1};
   send(ytCur);if(st===1){npTitle=vd.title||'YouTube';send({t:'np',title:npTitle})}}
 async function ytPlay(link){
@@ -254,6 +255,20 @@ async function ytPlay(link){
   setTimeout(()=>{if(yp&&yp.getPlayerState&&yp.getPlayerState()!==1)say('Dghet ▶ f l\'player dyal YouTube (iPad kayblokki l\'autoplay)')},3000);
 }
 setInterval(()=>{if(yp&&yp.getPlayerState&&yp.getPlayerState()===1)ytSend()},4000);
+let tab=null;
+function tabStop(){if(!tab)return;try{tab.s.disconnect();tab.g.disconnect()}catch(e){}tab.st.getTracks().forEach(t=>t.stop());tab=null;$('tb').classList.remove('on');$('tb').textContent='🖥 Audio d\'un onglet → radio (PC)'}
+async function tabCapture(){
+  if(tab)return tabStop();
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia)return say('Had l\'option khass PC (Chrome/Edge). Fl\'iPad/iPhone ma kaynach.');
+  init();await ctx.resume();let st;
+  try{st=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true,selfBrowserSurface:'exclude',systemAudio:'exclude'})}catch(e){return say('Capture t7ayyedat: '+e.message)}
+  const at=st.getAudioTracks()[0];if(!at){st.getTracks().forEach(t=>t.stop());return say('Ma kayn 7ta audio: 3awed o 7ett ✔ "Partager l\'audio de l\'onglet"')}
+  const s=ctx.createMediaStreamSource(new MediaStream([at])),g=ctx.createGain();s.connect(g);g.connect(sendBus);g.connect(sendBus2);
+  tab={s,g,st};at.onended=tabStop;
+  if(yp)try{yp.pauseVideo()}catch(e){}send({t:'yt',id:null});ytCur=null;
+  $('tb').classList.add('on');$('tb').textContent='🖥 Audio onglet: ON (dghet bach twqef)';say('✅ L\'audio dyal l\'onglet kaydkhel f l\'radio')
+}
+$('tb').onclick=tabCapture;
 ytLoad();$('mic').onclick=toggleMic;$('yb').onclick=()=>ytPlay($('yu').value);
 $('thr').oninput=()=>{$('thv').textContent=$('thr').value;pollUi()};callsUi();pollUi();
 
