@@ -4,10 +4,10 @@ const crypto = require("crypto");
 
 const b64u = (b) => Buffer.from(b).toString("base64url");
 
-function makeToken(env, identity, video, ttl = 3600) {
+function makeToken(env, identity, video, ttl = 3600, name) {
   const now = Math.floor(Date.now() / 1000);
   const h = b64u(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const p = b64u(JSON.stringify({ iss: env.LIVEKIT_API_KEY, sub: identity, nbf: now, exp: now + ttl, video }));
+  const p = b64u(JSON.stringify({ iss: env.LIVEKIT_API_KEY, sub: identity, nbf: now, exp: now + ttl, video, ...(name ? { name } : {}) }));
   const sig = crypto.createHmac("sha256", env.LIVEKIT_API_SECRET).update(h + "." + p).digest("base64url");
   return h + "." + p + "." + sig;
 }
@@ -43,13 +43,28 @@ module.exports = async (req, res) => {
   const room = String(body.room || "radio");
   if (!/^[\w-]{1,40}$/.test(room)) return res.status(400).json({ error: "Smiyt radio machi s7i7a" });
   try {
+    if (body.role === "allow") {
+      // DJ accepts / hangs up a caller: changes that listener's permission directly on LiveKit Cloud.
+      if (!samePassword(body.key, env.HOST_KEY)) return res.status(401).json({ error: "Mot de passe DJ ghalat" });
+      const identity = String(body.identity || "");
+      if (!/^[\w-]{1,64}$/.test(identity)) return res.status(400).json({ error: "identity machi s7i7a" });
+      const t = makeToken(env, "dj-admin", { roomAdmin: true, room }, 60);
+      const r = await fetch(httpUrl(env.LIVEKIT_URL) + "/twirp/livekit.RoomService/UpdateParticipant", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
+        body: JSON.stringify({ room, identity, permission: { canSubscribe: true, canPublish: !!body.allow, canPublishData: true } }),
+      });
+      if (!r.ok) return res.status(502).json({ error: "LiveKit UpdateParticipant " + r.status + " (sa7abek mazal f radio?)" });
+      return res.status(200).json({ ok: true });
+    }
     if (body.role === "host") {
       if (!samePassword(body.key, env.HOST_KEY)) return res.status(401).json({ error: "Mot de passe DJ ghalat" });
-      const token = makeToken(env, "dj", { roomJoin: true, room, canPublish: true, canSubscribe: false, canPublishData: false });
+      const token = makeToken(env, "dj", { roomJoin: true, room, canPublish: true, canSubscribe: true, canPublishData: true }, 3600, "DJ");
       return res.status(200).json({ token, url: env.LIVEKIT_URL });
     }
     const id = "ls-" + crypto.randomUUID().slice(0, 8);
-    const token = makeToken(env, id, { roomJoin: true, room, canPublish: true, canSubscribe: true, canPublishData: true });
+    const token = makeToken(env, id, { roomJoin: true, room, canPublish: false, canSubscribe: true, canPublishData: true }, 3600,
+      String(body.name || "").replace(/[<>&"]/g, "").trim().slice(0, 20) || "ami");
     return res.status(200).json({ token, url: env.LIVEKIT_URL });
   } catch (e) {
     return res.status(502).json({ error: String((e && e.message) || e) });
